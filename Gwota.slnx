@@ -7,4 +7,9 @@
     <Project Path="tests/Gwota.Core.Tests/Gwota.Core.Tests.csproj" />
     <Project Path="tests/Gwota.Net.Tests/Gwota.Net.Tests.csproj" />
   </Folder>
+  <Folder Name="/game/">
+    <Project Path="game/Gwota.csproj">
+      <BuildType Project="Debug" />
+    </Project>
+  </Folder>
 </Solution>
