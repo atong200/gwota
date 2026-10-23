@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+    <Using Include="Gwota.Core.Cards" />
+    <Using Include="Gwota.Core.Common" />
+    <Using Include="Gwota.Core.Data" />
+    <Using Include="Gwota.Core.Match" />
+    <Using Include="Gwota.Core.Session" />
+    <Using Include="Gwota.Net.Tests.Support" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gwota.Net\Gwota.Net.csproj" />
+  </ItemGroup>
+
+</Project>

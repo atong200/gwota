@@ -5,5 +5,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Gwota.Core.Tests/Gwota.Core.Tests.csproj" />
+    <Project Path="tests/Gwota.Net.Tests/Gwota.Net.Tests.csproj" />
   </Folder>
 </Solution>
