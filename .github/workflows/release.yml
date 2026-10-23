@@ -1,0 +1,188 @@
+# Exports the game for Windows and Linux and publishes a GitHub Release.
+#
+# Triggers:
+#   - pushing a tag like v0.2.0 -> tests, exports, smoke-tests both builds, creates the Release
+#   - "Run workflow" button     -> same, but the archives are only uploaded as run artifacts
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7"
+  GODOT_RELEASE: "4.7-stable"
+  GAME_NAME: Gwota
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  # Godot's export runs `dotnet publish`; a lingering MSBuild node or Roslyn compiler server keeps its
+  # output pipe open and stalls each export for minutes.
+  MSBUILDDISABLENODEREUSE: "1"
+  UseSharedCompilation: "false"
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  export:
+    name: Export ${{ matrix.platform }}
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            preset: Windows Desktop
+            binary: Gwota.exe
+            smoke: Gwota.console.exe
+            editor_asset: mono_win64.zip
+            templates: windows_release_x86_64.exe windows_release_x86_64_console.exe
+          - platform: linux
+            os: ubuntu-latest
+            preset: Linux
+            binary: Gwota.x86_64
+            smoke: Gwota.x86_64
+            editor_asset: mono_linux_x86_64.zip
+            templates: linux_release.x86_64
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore cached Godot
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/godot
+          key: godot-${{ env.GODOT_RELEASE }}-${{ matrix.platform }}
+
+      - name: Download Godot and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        env:
+          EDITOR_ASSET: ${{ matrix.editor_asset }}
+          TEMPLATES: ${{ matrix.templates }}
+        run: |
+          $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_RELEASE"
+          $dir = "$env:RUNNER_TEMP/godot"
+          New-Item -ItemType Directory -Force $dir, "$dir/templates" | Out-Null
+          Invoke-WebRequest "$base/Godot_v$($env:GODOT_RELEASE)_$env:EDITOR_ASSET" -OutFile "$dir/editor.zip"
+          Invoke-WebRequest "$base/Godot_v$($env:GODOT_RELEASE)_mono_export_templates.tpz" -OutFile "$dir/templates.zip"
+          Expand-Archive "$dir/editor.zip" -DestinationPath "$dir/editor"
+
+          # The full template archive is ~1 GB; keep only what this platform's preset uses.
+          $needed = @("version.txt", "icudt_godot.dat") + ($env:TEMPLATES -split ' ')
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead("$dir/templates.zip")
+          try {
+            foreach ($entry in $zip.Entries | Where-Object { $needed -contains $_.Name }) {
+              [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, "$dir/templates/$($entry.Name)", $true)
+            }
+          } finally { $zip.Dispose() }
+          Remove-Item "$dir/editor.zip", "$dir/templates.zip"
+
+      - name: Install Godot and export templates
+        run: |
+          $templatesRoot = if ($IsWindows) { "$env:APPDATA/Godot" } else { "$HOME/.local/share/godot" }
+          $target = "$templatesRoot/export_templates/$env:GODOT_VERSION.stable.mono"
+          New-Item -ItemType Directory -Force $target | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/godot/templates/*" $target -Force
+
+          $pattern = if ($IsWindows) { "*_console.exe" } else { "*.x86_64" }
+          $godot = Get-ChildItem "$env:RUNNER_TEMP/godot/editor" -Recurse -Filter $pattern | Select-Object -First 1
+          if (-not $godot) { throw "Godot executable not found" }
+          if (-not $IsWindows) {
+            chmod +x $godot.FullName
+            Get-ChildItem $target | ForEach-Object { chmod +x $_.FullName }
+          }
+          "GODOT=$($godot.FullName)" >> $env:GITHUB_ENV
+
+      - name: Stamp version
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $version = $env:GITHUB_REF_NAME.TrimStart('v')
+            $numeric = [regex]::Match($version, '^\d+(\.\d+){0,3}').Value
+            if (-not $numeric) { throw "Tag '$env:GITHUB_REF_NAME' must look like v1.2.3" }
+
+            $project = (Get-Content game/project.godot -Raw) -replace 'config/version="[^"]*"', ('config/version="' + $version + '"')
+            Set-Content game/project.godot $project -NoNewline
+            # Windows file metadata only accepts numeric versions.
+            $presets = (Get-Content game/export_presets.cfg -Raw) -replace 'application/(file|product)_version="[^"]*"', ('application/$1_version="' + $numeric + '"')
+            Set-Content game/export_presets.cfg $presets -NoNewline
+          } else {
+            $version = "dev-$($env:GITHUB_SHA.Substring(0, 7))"
+          }
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Build C# and import assets
+        run: |
+          dotnet build game/Gwota.csproj
+          if ($LASTEXITCODE -ne 0) { throw "C# build failed" }
+          & $env:GODOT --headless --path game --import
+
+      - name: Export
+        env:
+          PRESET: ${{ matrix.preset }}
+          BINARY: ${{ matrix.binary }}
+        run: |
+          $out = "build/${{ matrix.platform }}"
+          New-Item -ItemType Directory -Force "game/$out" | Out-Null
+          & $env:GODOT --headless --path game --export-release $env:PRESET "$out/$env:BINARY"
+          if (-not (Test-Path "game/$out/$env:BINARY")) { throw "Export failed for preset '$env:PRESET'" }
+
+      # Runs the exported binary headless: proves the pack contains the card data and the C# assemblies load.
+      - name: Smoke test exported build
+        working-directory: game/build/${{ matrix.platform }}
+        run: |
+          & "./${{ matrix.smoke }}" --headless -- --smoke
+          if ($LASTEXITCODE -ne 0) { throw "Smoke test failed with exit code $LASTEXITCODE" }
+
+      - name: Package
+        run: |
+          $name = "$env:GAME_NAME-$env:VERSION-${{ matrix.platform }}"
+          if ($IsWindows) {
+            Compress-Archive "game/build/windows/*" "$name.zip" -Force
+          } else {
+            # tar keeps the executable bit that zip archives created here would lose.
+            tar -czf "$name.tar.gz" -C game/build/linux .
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.GAME_NAME }}-${{ matrix.platform }}
+          path: |
+            *.zip
+            *.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: export
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

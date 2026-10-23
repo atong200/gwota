@@ -1,0 +1,43 @@
+# Builds the whole solution (core, tests and the Godot game scripts) and runs the unit tests.
+# Also reused by release.yml so a release can never skip the tests.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Godot.NET.Sdk comes from nuget.org, so the game scripts compile without installing Godot.
+      - name: Build
+        run: dotnet build Gwota.slnx
+
+      - name: Test core
+        run: dotnet test --project tests/Gwota.Core.Tests --no-build
+
+      - name: Test networking
+        run: dotnet test --project tests/Gwota.Net.Tests --no-build
