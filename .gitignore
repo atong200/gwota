@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+coverage/
+
+# Godot
+.godot/
+game/build/
+*.translation
+export_credentials.cfg
+mono_crash.*.json
+
+# IDE / OS
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+Thumbs.db
+.DS_Store
