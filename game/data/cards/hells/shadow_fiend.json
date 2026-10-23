@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "shadow_fiend",
+  "name": "Shadow Fiend",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 10,
+  "hero": true,
+  "description": "Requiem of Souls."
+}

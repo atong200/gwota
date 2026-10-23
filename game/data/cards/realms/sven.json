@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "sven",
+  "name": "Sven",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 10,
+  "hero": true,
+  "description": "Rogue Knight. God's Strength."
+}

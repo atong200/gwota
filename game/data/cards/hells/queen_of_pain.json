@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "queen_of_pain",
+  "name": "Queen of Pain",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 5,
+  "description": "Akasha. Sonic Wave."
+}

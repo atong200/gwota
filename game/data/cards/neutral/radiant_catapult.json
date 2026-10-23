@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "radiant_catapult",
+  "name": "Radiant Catapult",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 3,
+  "abilities": [
+    "muster"
+  ],
+  "musterGroup": "radiant_creeps"
+}

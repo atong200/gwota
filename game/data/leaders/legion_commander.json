@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "legion_commander",
+  "name": "Legion Commander",
+  "faction": "realms",
+  "ability": "horn_row",
+  "row": "siege",
+  "description": "Press the Attack: doubles your siege row."
+}

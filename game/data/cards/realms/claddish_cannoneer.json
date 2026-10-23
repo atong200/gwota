@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "claddish_cannoneer",
+  "name": "Claddish Cannoneer",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 3,
+  "abilities": [
+    "tight_bond"
+  ],
+  "description": "Powder, shot and the Admiral's orders."
+}

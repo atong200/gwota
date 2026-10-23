@@ -1,0 +1,8 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "undying",
+  "name": "Undying",
+  "faction": "hells",
+  "ability": "return_from_discard",
+  "description": "Returns a card of your choice from your discard pile to your hand."
+}

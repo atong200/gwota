@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "riki",
+  "name": "Riki",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "spy"
+  ],
+  "description": "Stealth assassin, hides among the enemy."
+}

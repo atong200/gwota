@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "shadow_demon",
+  "name": "Shadow Demon",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "spy"
+  ],
+  "description": "A demon of the Hells. Demonic Purge."
+}

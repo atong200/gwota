@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "abaddon",
+  "name": "Abaddon",
+  "faction": "realms",
+  "ability": "scorch_row",
+  "row": "ranged",
+  "description": "Mist Coil: destroys the enemy's strongest ranged unit(s) if their ranged row totals 10 or more."
+}

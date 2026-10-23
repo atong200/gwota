@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "freezing_field",
+  "name": "Freezing Field",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "weather",
+  "rows": [
+    "melee"
+  ],
+  "description": "Sets all melee units to 1."
+}

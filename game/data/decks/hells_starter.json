@@ -1,0 +1,33 @@
+{
+  "$schema": "../schema/deck.schema.json",
+  "id": "hells_starter",
+  "name": "Hellborn Legion",
+  "faction": "hells",
+  "leader": "underlord",
+  "cards": {
+    "terrorblade": 1,
+    "shadow_fiend": 1,
+    "roshan": 1,
+    "wraith_king": 1,
+    "visage": 1,
+    "shadow_demon": 2,
+    "warlock": 1,
+    "death_prophet": 1,
+    "infernal_golem": 2,
+    "lion": 1,
+    "queen_of_pain": 1,
+    "clinkz": 1,
+    "doom": 1,
+    "hellbear_smasher": 3,
+    "dire_melee_creep": 3,
+    "dire_ranged_creep": 2,
+    "dire_catapult": 1,
+    "drum_of_endurance": 2,
+    "laguna_blade": 1,
+    "manta_style": 2,
+    "freezing_field": 1,
+    "smoke_of_deceit": 1,
+    "eclipse": 1,
+    "sunstrike": 1
+  }
+}

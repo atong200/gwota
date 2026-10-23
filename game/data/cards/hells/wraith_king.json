@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "wraith_king",
+  "name": "Wraith King",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 5,
+  "abilities": [
+    "medic"
+  ],
+  "description": "Ostarion. Reincarnation."
+}

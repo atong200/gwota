@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "lion",
+  "name": "Lion",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 6,
+  "description": "Finger of Death."
+}

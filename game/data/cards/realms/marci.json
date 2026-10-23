@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "marci",
+  "name": "Marci",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 7,
+  "description": "Sworn guardian of the princess. Unleash."
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "infernal_golem",
+  "name": "Infernal Golem",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 6,
+  "description": "Called down by Warlock's Chaotic Offering."
+}

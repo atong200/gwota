@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "ravage",
+  "name": "Ravage",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "weather",
+  "rows": [
+    "siege"
+  ],
+  "description": "Sets all siege units to 1."
+}

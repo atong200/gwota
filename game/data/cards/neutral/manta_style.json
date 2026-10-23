@@ -1,0 +1,9 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "manta_style",
+  "name": "Manta Style",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "decoy",
+  "description": "Swap with a unit on your side to return it to your hand."
+}

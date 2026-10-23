@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "roshan",
+  "name": "Roshan",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 15,
+  "hero": true,
+  "description": "The Immortal. Drops the Aegis."
+}

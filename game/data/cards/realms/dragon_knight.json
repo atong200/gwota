@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "dragon_knight",
+  "name": "Dragon Knight",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 6,
+  "abilities": [
+    "scorch_row"
+  ],
+  "description": "Davion. Elder Dragon Form."
+}

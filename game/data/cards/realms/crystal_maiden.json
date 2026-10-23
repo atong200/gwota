@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "crystal_maiden",
+  "name": "Crystal Maiden",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 10,
+  "hero": true,
+  "description": "Rylai, the Crystal Maiden."
+}

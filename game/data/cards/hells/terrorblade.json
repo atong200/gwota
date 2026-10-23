@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "terrorblade",
+  "name": "Terrorblade",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 10,
+  "hero": true,
+  "description": "The Demon Marauder. Metamorphosis."
+}

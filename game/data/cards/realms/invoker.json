@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "invoker",
+  "name": "Invoker",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 8,
+  "description": "The Arsenal Magus. Invoke."
+}

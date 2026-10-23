@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "leader.schema.json",
+  "title": "Gwota leader",
+  "description": "One leader per file: data/leaders/<id>.json. Art: assets/leaders/<id>.png.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "faction", "ability"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "faction": { "enum": ["realms", "hells"] },
+    "ability": {
+      "description": "Used once per match instead of playing a card.",
+      "enum": ["clear_weather", "play_weather_from_deck", "horn_row", "scorch_row", "return_from_discard"]
+    },
+    "row": {
+      "description": "Required by horn_row, scorch_row and play_weather_from_deck.",
+      "enum": ["melee", "ranged", "siege"]
+    },
+    "description": { "type": "string" }
+  },
+  "if": { "properties": { "ability": { "enum": ["horn_row", "scorch_row", "play_weather_from_deck"] } } },
+  "then": { "required": ["row"] },
+  "else": { "not": { "required": ["row"] } }
+}

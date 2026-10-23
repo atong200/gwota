@@ -1,0 +1,9 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "drum_of_endurance",
+  "name": "Drum of Endurance",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "horn",
+  "description": "Doubles the strength of all units in a row."
+}

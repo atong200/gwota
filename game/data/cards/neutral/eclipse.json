@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "eclipse",
+  "name": "Eclipse",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "weather",
+  "rows": [
+    "ranged",
+    "siege"
+  ],
+  "description": "Sets all ranged and siege units to 1."
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "warlock",
+  "name": "Warlock",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 3,
+  "abilities": [
+    "morale_boost"
+  ],
+  "description": "Fatal Bonds."
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "lina",
+  "name": "Lina",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 7,
+  "description": "Slayer."
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "chen",
+  "name": "Chen",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 5,
+  "abilities": [
+    "medic"
+  ],
+  "description": "Holy Knight of the Fold. Holy Persuasion."
+}

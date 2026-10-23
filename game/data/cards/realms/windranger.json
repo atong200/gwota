@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "windranger",
+  "name": "Windranger",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 6,
+  "description": "Focus Fire."
+}

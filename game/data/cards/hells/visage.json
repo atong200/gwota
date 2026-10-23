@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "visage",
+  "name": "Visage",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 5,
+  "abilities": [
+    "medic"
+  ],
+  "description": "The Bound Form of Necro'lic. Gravekeeper's Cloak."
+}

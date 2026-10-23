@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "deck.schema.json",
+  "title": "Gwota deck",
+  "description": "A deck: data/decks/<id>.json. Needs at least 22 units and at most 10 specials; max 3 copies per card, 1 per hero; only cards of the deck's faction or neutral.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "faction", "leader", "cards"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "faction": { "enum": ["realms", "hells"] },
+    "leader": { "description": "Leader id.", "type": "string" },
+    "cards": {
+      "description": "Card id → number of copies.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 3 }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "beastmaster",
+  "name": "Beastmaster",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "melee",
+    "ranged"
+  ],
+  "strength": 6,
+  "description": "Karroch of Slom. Primal Roar."
+}

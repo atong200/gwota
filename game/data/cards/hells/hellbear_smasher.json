@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "hellbear_smasher",
+  "name": "Hellbear Smasher",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "tight_bond"
+  ],
+  "description": "Thunder Clap."
+}

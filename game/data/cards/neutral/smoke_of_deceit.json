@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "smoke_of_deceit",
+  "name": "Smoke of Deceit",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "weather",
+  "rows": [
+    "ranged"
+  ],
+  "description": "Sets all ranged units to 1."
+}

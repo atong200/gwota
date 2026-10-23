@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "drow_ranger",
+  "name": "Drow Ranger",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 2,
+  "abilities": [
+    "horn"
+  ],
+  "description": "Precision Aura."
+}

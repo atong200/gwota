@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "dire_ranged_creep",
+  "name": "Dire Ranged Creep",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 2,
+  "abilities": [
+    "muster"
+  ],
+  "musterGroup": "dire_creeps"
+}

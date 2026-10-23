@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "doom",
+  "name": "Doom",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 6,
+  "abilities": [
+    "scorch_row"
+  ],
+  "description": "Lucifer. Scorched Earth."
+}

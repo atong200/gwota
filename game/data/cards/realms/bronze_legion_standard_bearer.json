@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "bronze_legion_standard_bearer",
+  "name": "Bronze Legion Standard-Bearer",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 3,
+  "abilities": [
+    "morale_boost"
+  ],
+  "description": "Where the banner stands, the Legion holds."
+}

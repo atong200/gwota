@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "kunkka",
+  "name": "Kunkka",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 6,
+  "description": "Admiral of the Claddish Navy."
+}

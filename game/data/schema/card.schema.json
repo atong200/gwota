@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "card.schema.json",
+  "title": "Gwota card",
+  "description": "One card per file: data/cards/<faction>/<id>.json. The file name must equal the id. Art is picked up automatically from assets/cards/<id>.png.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "faction", "kind"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "description": "Unique snake_case id, equal to the file name.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "name": { "description": "Display name.", "type": "string", "minLength": 1 },
+    "faction": { "enum": ["neutral", "realms", "hells"] },
+    "kind": { "enum": ["unit", "special"] },
+    "rows": {
+      "description": "Units: rows the card may be played in (several = agile). Weather: affected rows. Horn: allowed rows (all when omitted).",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["melee", "ranged", "siege"] }
+    },
+    "strength": { "description": "Base strength (units only).", "type": "integer", "minimum": 0 },
+    "hero": { "description": "Heroes are immune to every effect and cannot be revived or decoyed.", "type": "boolean" },
+    "abilities": {
+      "description": "Unit abilities.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["spy", "medic", "muster", "tight_bond", "morale_boost", "horn", "scorch_row"] }
+    },
+    "effect": {
+      "description": "Special card effect.",
+      "enum": ["horn", "scorch", "decoy", "weather", "clear_weather"]
+    },
+    "musterGroup": { "description": "Cards sharing a muster group are pulled from the deck together.", "type": "string" },
+    "description": { "description": "Optional flavour or rules text shown on the card.", "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "unit" } } },
+      "then": {
+        "required": ["rows", "strength"],
+        "properties": { "rows": { "minItems": 1 } },
+        "not": { "required": ["effect"] }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "special" } } },
+      "then": {
+        "required": ["effect"],
+        "not": { "anyOf": [{ "required": ["abilities"] }, { "required": ["musterGroup"] }, { "required": ["strength"] }] }
+      }
+    },
+    {
+      "if": { "properties": { "abilities": { "contains": { "const": "muster" } } }, "required": ["abilities"] },
+      "then": { "required": ["musterGroup"] }
+    }
+  ]
+}

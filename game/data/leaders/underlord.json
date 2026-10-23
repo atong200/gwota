@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "underlord",
+  "name": "Underlord",
+  "faction": "hells",
+  "ability": "play_weather_from_deck",
+  "row": "melee",
+  "description": "Firestorm: plays a melee weather card from your deck."
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "keeper_of_the_light",
+  "name": "Keeper of the Light",
+  "faction": "realms",
+  "ability": "clear_weather",
+  "description": "Illuminate: clear all weather."
+}

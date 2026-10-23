@@ -1,0 +1,9 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "sunstrike",
+  "name": "Sun Strike",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "clear_weather",
+  "description": "Clears all weather effects."
+}

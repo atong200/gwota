@@ -1,0 +1,9 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "laguna_blade",
+  "name": "Laguna Blade",
+  "faction": "neutral",
+  "kind": "special",
+  "effect": "scorch",
+  "description": "Destroys the strongest unit(s) on the board."
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "phantom_lancer",
+  "name": "Phantom Lancer",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "tight_bond"
+  ],
+  "description": "Juxtapose."
+}

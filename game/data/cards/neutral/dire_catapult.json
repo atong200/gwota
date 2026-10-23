@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "dire_catapult",
+  "name": "Dire Catapult",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 3,
+  "abilities": [
+    "muster"
+  ],
+  "musterGroup": "dire_creeps"
+}

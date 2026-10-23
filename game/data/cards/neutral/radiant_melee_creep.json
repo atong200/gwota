@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "radiant_melee_creep",
+  "name": "Radiant Melee Creep",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 2,
+  "abilities": [
+    "muster"
+  ],
+  "musterGroup": "radiant_creeps"
+}

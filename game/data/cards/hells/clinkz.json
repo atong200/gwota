@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "clinkz",
+  "name": "Clinkz",
+  "faction": "hells",
+  "kind": "unit",
+  "rows": [
+    "melee",
+    "ranged"
+  ],
+  "strength": 6,
+  "description": "The Bone Fletcher. Burning Barrage."
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "omniknight",
+  "name": "Omniknight",
+  "faction": "realms",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 5,
+  "abilities": [
+    "medic"
+  ],
+  "description": "Purification."
+}

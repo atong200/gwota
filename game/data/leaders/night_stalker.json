@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "night_stalker",
+  "name": "Night Stalker",
+  "faction": "hells",
+  "ability": "play_weather_from_deck",
+  "row": "ranged",
+  "description": "Darkness: plays a ranged weather card from your deck."
+}
