@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gwota.Net</RootNamespace>
+    <AssemblyName>Gwota.Net</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gwota.Net.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gwota.Core\Gwota.Core.csproj" />
+  </ItemGroup>
+
+</Project>

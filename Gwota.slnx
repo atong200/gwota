@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Gwota.Core/Gwota.Core.csproj" />
+    <Project Path="src/Gwota.Net/Gwota.Net.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Gwota.Core.Tests/Gwota.Core.Tests.csproj" />
