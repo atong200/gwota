@@ -25,34 +25,27 @@ public sealed partial class MainMenu : Control
     private readonly GameData _data;
     private readonly SettingsStore _settings;
     private readonly DeckStore _decks;
-    private readonly Action<DeckDefinition> _onPlayComputer;
-    private readonly Action _onPlayLan;
-    private readonly Action _onDecks;
-    private readonly Action _onQuit;
+    private readonly INavigator _navigator;
     private readonly VBoxContainer _page = new();
     private Action? _back;
 
-    public MainMenu(AppServices context, Action<DeckDefinition> onPlayComputer, Action onPlayLan, Action onDecks, Action onQuit, Page startPage = Page.Title)
+    public MainMenu(AppServices context, INavigator navigator, Page startPage = Page.Title)
     {
         ArgumentNullException.ThrowIfNull(context);
         _data = context.Data;
         _settings = context.Settings;
         _decks = context.Decks;
-        _onPlayComputer = onPlayComputer ?? throw new ArgumentNullException(nameof(onPlayComputer));
-        _onPlayLan = onPlayLan ?? throw new ArgumentNullException(nameof(onPlayLan));
-        _onDecks = onDecks ?? throw new ArgumentNullException(nameof(onDecks));
-        _onQuit = onQuit ?? throw new ArgumentNullException(nameof(onQuit));
+        _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         var version = context.Version;
 
         SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(new ColorRect { Color = Palette.Background, AnchorRight = 1, AnchorBottom = 1 });
 
-        var layout = new VBoxContainer { CustomMinimumSize = new Vector2(520, 0) };
-        layout.AddThemeConstantOverride("separation", 14);
+        var layout = new VBoxContainer { CustomMinimumSize = new Vector2(520, 0) }.WithGap(14);
         layout.AddChild(Widgets.Label("GWOTA", 0, Palette.Highlight, HorizontalAlignment.Center).AsDisplay(88));
         layout.AddChild(Widgets.Label("Inspired by GWENT and DOTA 2", 20, Palette.Muted, HorizontalAlignment.Center));
         layout.AddChild(new Control { CustomMinimumSize = new Vector2(0, 30) });
-        _page.AddThemeConstantOverride("separation", 14);
+        _page.WithGap(14);
         layout.AddChild(_page);
 
         var center = new CenterContainer();
@@ -87,9 +80,9 @@ public sealed partial class MainMenu : Control
     private void ShowTitlePage() => ShowPage(
         back: null,
         MenuButton("Play", ShowPlayPage),
-        MenuButton("Decks", _onDecks),
+        MenuButton("Decks", _navigator.ShowDecks),
         MenuButton("Options", OpenOptions),
-        MenuButton("Quit", _onQuit));
+        MenuButton("Quit", _navigator.Quit));
 
     private void ShowPlayPage() => ShowPage(
         back: ShowTitlePage,
@@ -101,9 +94,8 @@ public sealed partial class MainMenu : Control
 
     private void ShowPvpPage()
     {
-        var tiles = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        tiles.AddThemeConstantOverride("separation", 24);
-        tiles.AddChild(new ModeTile(Icons.NetworkIcon, "Local network", "Host or join a game on the same network.", _onPlayLan));
+        var tiles = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center }.WithGap(24);
+        tiles.AddChild(new ModeTile(Icons.NetworkIcon, "Local network", "Host or join a game on the same network.", _navigator.ShowLan));
         tiles.AddChild(new ModeTile(
             Icons.GlobeIcon,
             "Online",
@@ -122,12 +114,11 @@ public sealed partial class MainMenu : Control
     private void ShowDeckSelectPage()
     {
         var controls = new List<Control> { Heading("Choose your deck") };
-        var list = new VBoxContainer();
-        list.AddThemeConstantOverride("separation", 10);
+        var list = new VBoxContainer().WithGap(10);
         foreach (var deck in _decks.Collection.Decks)
         {
             var editor = new DeckEditor(deck, _data);
-            var button = Widgets.Button($"{deck.Name}   ({FactionInfo.Name(deck.Faction)}, leader {editor.Leader.Name})", () => _onPlayComputer(editor.Deck), 22);
+            var button = Widgets.Button($"{deck.Name}   ({FactionInfo.Name(deck.Faction)}, leader {editor.Leader.Name})", () => _navigator.StartMatch(editor.Deck), 22);
             button.CustomMinimumSize = new Vector2(0, 52);
             UiTheme.TintButton(button, Palette.ForFaction(deck.Faction));
             if (!editor.IsPlayable)
@@ -160,10 +151,8 @@ public sealed partial class MainMenu : Control
         }
     }
 
-    private void OpenOptions()
-    {
-        AddChild(new OptionsMenu(_settings));
-    }
+    private void OpenOptions() => AddChild(new OptionsMenu(_settings));
+
 
     private static Button MenuButton(string text, Action onPressed)
     {

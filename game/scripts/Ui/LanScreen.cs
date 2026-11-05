@@ -26,15 +26,14 @@ public sealed partial class LanScreen : Control
     private readonly AppServices _services;
     private readonly LanLobby _lobby;
     private readonly LanLaunchOptions _options;
-    private readonly Action<LanMatch> _onStart;
-    private readonly Action _onBack;
+    private readonly INavigator _navigator;
     private readonly List<DeckEditor> _decks;
     private readonly OptionButton _deckPicker = new() { FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(0, 46) };
     private readonly LineEdit _roomName = new() { MaxLength = NetworkSettings.MaxRoomNameLength, CustomMinimumSize = new Vector2(0, 46) };
     private readonly LineEdit _port = new() { MaxLength = 5, CustomMinimumSize = new Vector2(120, 46) };
     private readonly LineEdit _address = new() { PlaceholderText = "e.g. 192.168.1.20 or 192.168.1.20:7777", CustomMinimumSize = new Vector2(0, 46) };
     private readonly VBoxContainer _games = new();
-    private readonly Label _error = Widgets.Label(string.Empty, 19, Palette.Debuff, HorizontalAlignment.Center);
+    private readonly Label _error = Widgets.Label(string.Empty, 19, Palette.Error, HorizontalAlignment.Center);
     private readonly Button _hostButton;
     private readonly Button _joinButton;
     private WaitingDialog? _waiting;
@@ -44,13 +43,12 @@ public sealed partial class LanScreen : Control
     private double _searchTimeLeft = SearchDuration;
     private bool _started;
 
-    public LanScreen(AppServices services, LanLobby lobby, LanLaunchOptions options, Action<LanMatch> onStart, Action onBack)
+    public LanScreen(AppServices services, INavigator navigator, LanLobby lobby, LanLaunchOptions options)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
+        _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         _lobby = lobby ?? throw new ArgumentNullException(nameof(lobby));
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _onStart = onStart ?? throw new ArgumentNullException(nameof(onStart));
-        _onBack = onBack ?? throw new ArgumentNullException(nameof(onBack));
         _decks = [.. services.Decks.Collection.Decks.Select(deck => new DeckEditor(deck, services.Data))];
         _hostButton = Widgets.Button("Host game", Host, 23);
         _joinButton = Widgets.Button("Join", JoinTypedAddress, FieldSize);
@@ -89,24 +87,23 @@ public sealed partial class LanScreen : Control
         if (@event.IsActionPressed("ui_cancel"))
         {
             GetViewport().SetInputAsHandled();
-            _onBack();
+            Back();
         }
     }
 
+    private void Back() => _navigator.ShowMainMenu(MainMenu.Page.Pvp);
+
     private void BuildLayout()
     {
-        var layout = new VBoxContainer();
-        layout.AddThemeConstantOverride("separation", 18);
+        var layout = new VBoxContainer().WithGap(18);
         layout.AddChild(Widgets.Label("Local network", 0, Palette.Highlight, HorizontalAlignment.Center).WithBoldFont(46));
         layout.AddChild(Widgets.Label("Play against someone on the same network.", TextSize, Palette.Muted, HorizontalAlignment.Center));
 
-        var left = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1 };
-        left.AddThemeConstantOverride("separation", 24);
+        var left = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1 }.WithGap(24);
         left.AddChild(BuildHostPanel());
         left.AddChild(BuildPlayerPanel());
 
-        var columns = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        columns.AddThemeConstantOverride("separation", 24);
+        var columns = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill }.WithGap(24);
         columns.AddChild(left);
         columns.AddChild(BuildJoinPanel());
         layout.AddChild(columns);
@@ -114,20 +111,13 @@ public sealed partial class LanScreen : Control
         _error.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         layout.AddChild(_error);
 
-        var back = Widgets.Button("Back", _onBack, 22);
+        var back = Widgets.Button("Back", Back, 22);
         back.CustomMinimumSize = new Vector2(180, 50);
         back.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         layout.AddChild(back);
 
-        var margin = new MarginContainer();
-        margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        foreach (var (side, size) in new[] { ("left", 60), ("right", 60), ("top", 30), ("bottom", 24) })
-        {
-            margin.AddThemeConstantOverride($"margin_{side}", size);
-        }
+        AddChild(Widgets.Margins(layout, left: 60, top: 30, right: 60, bottom: 24));
 
-        margin.AddChild(layout);
-        AddChild(margin);
     }
 
     /// <summary>Who is playing and with which deck, shared by hosting and joining.</summary>
@@ -198,8 +188,7 @@ public sealed partial class LanScreen : Control
 
         _hostButton.CustomMinimumSize = new Vector2(0, 58);
 
-        var body = new VBoxContainer();
-        body.AddThemeConstantOverride("separation", 18);
+        var body = new VBoxContainer().WithGap(18);
         body.AddChild(Heading("Host a game"));
         body.AddChild(Text("Open a game on this computer. Players on your network will see it in their list."));
         body.AddChild(form);
@@ -209,7 +198,7 @@ public sealed partial class LanScreen : Control
 
     private PanelContainer BuildJoinPanel()
     {
-        _games.AddThemeConstantOverride("separation", 10);
+        _games.WithGap(10);
         _games.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = SizeFlags.ExpandFill };
         scroll.AddChild(_games);
@@ -226,13 +215,11 @@ public sealed partial class LanScreen : Control
         _address.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _address.TextSubmitted += _ => JoinTypedAddress();
         _joinButton.CustomMinimumSize = new Vector2(130, 46);
-        var byAddress = new HBoxContainer();
-        byAddress.AddThemeConstantOverride("separation", 10);
+        var byAddress = new HBoxContainer().WithGap(10);
         byAddress.AddChild(_address);
         byAddress.AddChild(_joinButton);
 
-        var body = new VBoxContainer();
-        body.AddThemeConstantOverride("separation", 14);
+        var body = new VBoxContainer().WithGap(14);
         body.AddChild(header);
         body.AddChild(Widgets.Label("Games on your network", TextSize, Palette.Muted));
         body.AddChild(scroll);
@@ -246,8 +233,7 @@ public sealed partial class LanScreen : Control
     private static VBoxContainer AddressBlock()
     {
         var addresses = LocalNetwork.Addresses();
-        var block = new VBoxContainer();
-        block.AddThemeConstantOverride("separation", 2);
+        var block = new VBoxContainer().WithGap(2);
         if (addresses.Count == 0)
         {
             block.AddChild(Text("No network connection found."));
@@ -310,13 +296,12 @@ public sealed partial class LanScreen : Control
     private PanelContainer GameRow(LanGame game)
     {
         var beacon = game.Beacon;
-        var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
-        info.AddThemeConstantOverride("separation", 2);
+        var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore }.WithGap(2);
         info.AddChild(Widgets.Label(beacon.RoomName, 0, Palette.Text).WithBoldFont(23));
         info.AddChild(Widgets.Label($"Hosted by {beacon.HostName}  ·  {game.Endpoint}", 17, Palette.Muted));
         if (!game.IsCompatible)
         {
-            info.AddChild(Widgets.Label($"Different game version ({beacon.GameVersion})", 17, Palette.Debuff));
+            info.AddChild(Widgets.Label($"Different game version ({beacon.GameVersion})", 17, Palette.Error));
         }
 
         var join = Widgets.Button("Join", () => Join(new LanAddress(game.Address.ToString(), beacon.Port), beacon.RoomName), FieldSize);
@@ -328,8 +313,7 @@ public sealed partial class LanScreen : Control
             join.TooltipText = "Both players need the same version of the game.";
         }
 
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
+        var row = new HBoxContainer().WithGap(12);
         row.AddChild(info);
         row.AddChild(join);
         return Widgets.Panel(row, Widgets.Box(Palette.Row, Palette.PanelBorder, 1, radius: 6, margin: 12));
@@ -357,7 +341,7 @@ public sealed partial class LanScreen : Control
             case LanLobbyState.Started when !_started && _lobby.Match is { } match:
                 _started = true;
                 CloseWaiting();
-                Callable.From(() => _onStart(match)).CallDeferred();
+                Callable.From(() => _navigator.StartMatch(match)).CallDeferred();
                 break;
             default:
                 CloseWaiting();
@@ -389,7 +373,7 @@ public sealed partial class LanScreen : Control
 
     private void CloseWaiting()
     {
-        _waiting?.QueueFree();
+        _waiting?.Close();
         _waiting = null;
         _waitingFor = null;
     }

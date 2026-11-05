@@ -2,20 +2,27 @@ using Godot;
 using Gwota.Core.Common;
 using Gwota.Core.Match;
 using Gwota.Core.Presentation;
-using Gwota.Game.Infrastructure;
 
 namespace Gwota.Game.Ui;
 
-/// <summary>Side panel for one player: name, total score medallion, round crystals, pass state and the leader (piles are <see cref="PileView"/>s).</summary>
+/// <summary>
+/// Side panel for one player: name, total score medallion, round crystals and pass state in a column, with the leader
+/// portrait on the right (piles are <see cref="PileView"/>s). The portrait is clicked like a hand card to select the
+/// leader ability.
+/// </summary>
 public sealed partial class PlayerPanel : PanelContainer
 {
+    public static readonly Vector2 PortraitSize = new(96, 128);
+
     private readonly StyleBoxFlat _style;
     private readonly Label _name;
     private readonly ScoreBadge _score = new(58, 26, ring: 3);
     private readonly GemView _gems = new();
     private readonly Label _passed;
-    private readonly TextureRect _leaderArt;
-    private readonly Button _leader;
+    private readonly CenterContainer _portraitSlot = new() { CustomMinimumSize = PortraitSize };
+    private LeaderView? _portrait;
+    private bool _canUseLeader;
+    private bool _leaderSelected;
 
     public PlayerPanel()
     {
@@ -23,60 +30,79 @@ public sealed partial class PlayerPanel : PanelContainer
         AddThemeStyleboxOverride("panel", _style);
 
         _name = Widgets.Label(string.Empty, 22);
+        _name.ClipText = true;
+        _name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _score.TooltipText = "Total strength on the board. The highest total at the end of the round wins it.";
-        _gems.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        _score.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
+        _gems.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         _passed = Widgets.Label("PASSED", 18, Palette.Debuff);
-        _leaderArt = new TextureRect
-        {
-            CustomMinimumSize = new Vector2(0, 72),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-        };
-        _leader = Widgets.Button(string.Empty, () => LeaderPressed?.Invoke(), 16);
-        _leader.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 
-        _passed.VerticalAlignment = VerticalAlignment.Center;
-        var header = new HBoxContainer();
-        header.AddThemeConstantOverride("separation", 12);
-        header.AddChild(_score);
-        header.AddChild(_gems);
-        header.AddChild(Widgets.Spacer(vertical: false));
-        header.AddChild(_passed);
+        var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }.WithGap(4);
+        info.AddChild(_name);
+        info.AddChild(_score);
+        info.AddChild(_gems);
+        info.AddChild(_passed);
 
-        var layout = new VBoxContainer();
-        layout.AddThemeConstantOverride("separation", 4);
-        layout.AddChild(_name);
-        layout.AddChild(header);
-        layout.AddChild(_leaderArt);
-        layout.AddChild(_leader);
+        _portraitSlot.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        var layout = new HBoxContainer().WithGap(10);
+        layout.AddChild(info);
+        layout.AddChild(_portraitSlot);
         AddChild(layout);
     }
 
-    public event Action? LeaderPressed;
+    /// <summary>Raised when the leader portrait is clicked while the ability can be used.</summary>
+    public event Action? LeaderClicked;
 
     /// <param name="durationScale">Animation speed for a lost crystal (0 = no animation).</param>
-    public void Show(MatchEngine engine, Seat seat, bool isActive, bool canUseLeader, float durationScale)
+    public void Show(MatchEngine engine, Seat seat, bool isActive, float durationScale)
     {
         ArgumentNullException.ThrowIfNull(engine);
 
         var player = engine.State.Player(seat);
 
         _name.Text = player.Name;
+        _name.TooltipText = player.Name;
 
         var score = engine.Score(seat);
         var leading = score > engine.Score(seat.Opponent());
         _score.SetScore(score, leading ? Palette.Hero : Palette.ButtonBorder, leading ? Palette.Hero : Palette.Text, glow: leading);
         _gems.Show(player.Gems, engine.Rules.StartingGems, durationScale);
 
-        _passed.Visible = player.HasPassed;
+        _passed.Modulate = player.HasPassed ? Colors.White : Colors.Transparent;
 
         var leader = player.Leader;
-        _leaderArt.Texture = CardArt.ForLeader(leader.Id);
-        _leaderArt.Visible = _leaderArt.Texture is not null;
-        _leader.Text = $"Leader: {leader.Name}{(player.LeaderUsed ? " (used)" : string.Empty)}";
-        _leader.TooltipText = CardText.LeaderLine(leader).Plain;
-        _leader.Disabled = !canUseLeader;
+        if (_portrait?.Leader.Id != leader.Id)
+        {
+            _portrait?.QueueFree();
+            _portrait = new LeaderView(leader, PortraitSize);
+            _portrait.Clicked += _ => LeaderClicked?.Invoke();
+            _portraitSlot.AddChild(_portrait);
+        }
+
+        ApplyLeaderState();
+        _portrait.SetUsed(player.LeaderUsed);
+        _portrait.TooltipText = CardText.LeaderLine(leader).Plain + (player.LeaderUsed ? "\nAlready used." : string.Empty);
 
         _style.BorderColor = isActive ? Palette.Highlight : Palette.PanelBorder;
+    }
+
+    /// <param name="canUse">Whether the portrait is clickable (the local player's usable leader).</param>
+    /// <param name="selected">Whether the leader ability is selected and waits for confirmation.</param>
+    public void SetLeaderState(bool canUse, bool selected)
+    {
+        _canUseLeader = canUse;
+        _leaderSelected = selected;
+        ApplyLeaderState();
+    }
+
+    private void ApplyLeaderState()
+    {
+        if (_portrait is null)
+        {
+            return;
+        }
+
+        _portrait.Interactive = _canUseLeader;
+        _portrait.SetSelected(_leaderSelected);
     }
 }

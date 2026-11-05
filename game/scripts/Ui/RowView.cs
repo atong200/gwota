@@ -10,6 +10,7 @@ public sealed partial class RowView : PanelContainer
     private readonly StyleBoxFlat _style;
     private readonly ScoreBadge _score = new(36, 17);
     private readonly PanelContainer _hornSlot;
+    private readonly Label _leaderHorn;
     private readonly HBoxContainer _cards;
 
     public RowView(Seat side, RowType row)
@@ -33,15 +34,18 @@ public sealed partial class RowView : PanelContainer
             MouseFilter = MouseFilterEnum.Ignore,
             Alignment = BoxContainer.AlignmentMode.Center,
         };
-        scoreColumn.AddThemeConstantOverride("separation", 4);
+        scoreColumn.WithGap(4);
         scoreColumn.AddChild(_score);
         scoreColumn.AddChild(icon);
 
         _hornSlot = new PanelContainer { CustomMinimumSize = CardView.BoardSize, MouseFilter = MouseFilterEnum.Ignore };
         _hornSlot.AddThemeStyleboxOverride("panel", Widgets.Box(new Color(0, 0, 0, 0.25f), radius: 4, margin: 0));
+        _leaderHorn = Widgets.Label("LEADER\nHORN", 11, Palette.Highlight, HorizontalAlignment.Center);
+        _leaderHorn.VerticalAlignment = VerticalAlignment.Center;
+        _hornSlot.AddChild(_leaderHorn);
 
         _cards = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
-        _cards.AddThemeConstantOverride("separation", 3);
+        _cards.WithGap(3);
 
         var layout = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         layout.AddChild(scoreColumn);
@@ -58,33 +62,26 @@ public sealed partial class RowView : PanelContainer
 
     public void SetScore(int score) => _score.SetScore(score, Palette.PanelBorder);
 
-    /// <summary>Replaces the row content (not the score, see <see cref="SetScore"/>). <paramref name="horn"/> is the horn card view, if any.</summary>
-    public void Show(bool weather, bool targetable, IEnumerable<CardView> cards, CardView? horn, bool leaderHorn)
+    /// <summary>
+    /// Shows the row content (not the score, see <see cref="SetScore"/>). <paramref name="horn"/> is the horn card view,
+    /// if any. The views are owned by the caller: views dropped from the row are detached, not freed.
+    /// </summary>
+    public void SetContent(bool weather, IReadOnlyList<CardView> cards, CardView? horn, bool leaderHorn)
     {
         ArgumentNullException.ThrowIfNull(cards);
 
         _style.BgColor = weather ? Palette.RowWeather : Palette.Row;
+        _leaderHorn.Visible = horn is null && leaderHorn;
+        _hornSlot.SyncChildren(horn is null ? [_leaderHorn] : [_leaderHorn, horn]);
+        _cards.SyncChildren(cards);
+    }
+
+    /// <summary>Outlines the row and shows a pointing cursor when it is a play target.</summary>
+    public void SetTargetable(bool targetable)
+    {
         _style.BorderColor = targetable ? Palette.Target : Palette.PanelBorder;
         _style.SetBorderWidthAll(targetable ? 3 : 1);
         MouseDefaultCursorShape = targetable ? CursorShape.PointingHand : CursorShape.Arrow;
-
-        _hornSlot.ClearChildren();
-        if (horn is not null)
-        {
-            _hornSlot.AddChild(horn);
-        }
-        else if (leaderHorn)
-        {
-            var label = Widgets.Label("LEADER\nHORN", 11, Palette.Highlight, HorizontalAlignment.Center);
-            label.VerticalAlignment = VerticalAlignment.Center;
-            _hornSlot.AddChild(label);
-        }
-
-        _cards.ClearChildren();
-        foreach (var card in cards)
-        {
-            _cards.AddChild(card);
-        }
     }
 
     public override void _GuiInput(InputEvent @event)

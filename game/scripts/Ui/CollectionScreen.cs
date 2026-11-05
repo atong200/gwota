@@ -19,7 +19,7 @@ public sealed partial class CollectionScreen : Control
     private readonly GameData _data;
     private readonly DeckStore _store;
     private readonly SettingsStore _settings;
-    private readonly Action _onBack;
+    private readonly INavigator _navigator;
     private readonly BookView _book = new();
     private readonly CardBook _collection;
     private readonly PanelContainer _pane;
@@ -27,13 +27,14 @@ public sealed partial class CollectionScreen : Control
 
     private DeckEditPane? _editing;
 
-    public CollectionScreen(GameData data, DeckStore store, SettingsStore settings, Action onBack)
+    public CollectionScreen(AppServices services, INavigator navigator)
     {
-        _data = data ?? throw new ArgumentNullException(nameof(data));
-        _store = store ?? throw new ArgumentNullException(nameof(store));
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _onBack = onBack ?? throw new ArgumentNullException(nameof(onBack));
-        _collection = CardBook.ForCollection(data.Cards.Values);
+        ArgumentNullException.ThrowIfNull(services);
+        _data = services.Data;
+        _store = services.Decks;
+        _settings = services.Settings;
+        _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
+        _collection = CardBook.ForCollection(_data.Cards.Values);
 
         SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(new ColorRect { Color = Palette.Background, AnchorRight = 1, AnchorBottom = 1, MouseFilter = MouseFilterEnum.Ignore });
@@ -73,7 +74,7 @@ public sealed partial class CollectionScreen : Control
     {
         if (_editing is null)
         {
-            _onBack();
+            _navigator.ShowMainMenu();
         }
         else
         {

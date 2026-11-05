@@ -25,7 +25,7 @@ public sealed partial class ModeTile : Button
 
         var content = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
         content.SetAnchorsPreset(LayoutPreset.FullRect);
-        content.AddThemeConstantOverride("separation", 10);
+        content.WithGap(10);
         var tint = available ? Palette.Highlight : Palette.TextDisabled;
         var image = Icons.Rect(icon, 72, tint);
         image.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
@@ -38,14 +38,8 @@ public sealed partial class ModeTile : Button
         text.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         content.AddChild(text);
 
-        var margin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
-        margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        foreach (var side in new[] { "left", "right", "top", "bottom" })
-        {
-            margin.AddThemeConstantOverride($"margin_{side}", 14);
-        }
-
-        margin.AddChild(content);
+        var margin = Widgets.Margins(content, 14);
+        margin.MouseFilter = MouseFilterEnum.Ignore;
         AddChild(margin);
 
         if (ribbon is not null)
