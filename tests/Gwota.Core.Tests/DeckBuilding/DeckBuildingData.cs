@@ -19,7 +19,7 @@ internal static class DeckBuildingData
         }
 
         cards.Add(TestCards.Unit(10, RowType.Siege, "realms_hero", Faction.Realms, hero: true));
-        cards.Add(TestCards.Unit(4, RowType.Melee, "hells_1", Faction.Hells));
+        cards.Add(TestCards.Unit(4, RowType.Melee, "abyss_1", Faction.Abyss));
         cards.Add(TestCards.Agile(5, "neutral_agile", RowType.Melee, RowType.Siege));
         cards.Add(TestCards.Horn(RowType.Melee));
         cards.Add(TestCards.Scorch());
@@ -27,8 +27,8 @@ internal static class DeckBuildingData
         var leaders = new[]
         {
             TestCards.Leader(LeaderAbility.ClearWeather) with { Id = "legion_commander", Name = "Legion Commander" },
-            TestCards.Leader(LeaderAbility.ClearWeather) with { Id = "abaddon", Name = "Abaddon" },
-            TestCards.Leader(LeaderAbility.ClearWeather, faction: Faction.Hells) with { Id = "underlord", Name = "Underlord" },
+            TestCards.Leader(LeaderAbility.ClearWeather) with { Id = "luna", Name = "Luna" },
+            TestCards.Leader(LeaderAbility.ClearWeather, faction: Faction.Abyss) with { Id = "underlord", Name = "Underlord" },
         };
 
         var starter = new DeckDefinition

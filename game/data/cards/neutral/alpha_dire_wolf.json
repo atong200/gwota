@@ -1,0 +1,14 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "alpha_dire_wolf",
+  "name": "Alpha Dire Wolf",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "morale_boost"
+  ]
+}

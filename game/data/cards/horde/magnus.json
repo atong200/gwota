@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "magnus",
+  "name": "Magnus",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 3,
+  "abilities": [
+    "horn"
+  ],
+  "description": "Empower."
+}

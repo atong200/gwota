@@ -27,8 +27,8 @@ public static class BookLayout
     public const int Columns = 5;
     public const int Rows = 2;
 
-    /// <summary>Card width over height (the hand card is 86 x 122).</summary>
-    public const float CardAspect = 86f / 122f;
+    /// <summary>Card width over height for every card face: 3:4, the ratio of the card art (e.g. 768 x 1024).</summary>
+    public const float CardAspect = 3f / 4f;
 
     /// <summary>The copy stack's offset per extra copy, relative to the card width.</summary>
     public const float StackRatio = 0.035f;

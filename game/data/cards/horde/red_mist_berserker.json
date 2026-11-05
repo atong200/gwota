@@ -1,0 +1,16 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "red_mist_berserker",
+  "name": "Red Mist Berserker",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 3,
+  "abilities": [
+    "muster"
+  ],
+  "description": "Sworn to Axe's endless war.",
+  "musterGroup": "red_mist"
+}

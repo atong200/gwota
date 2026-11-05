@@ -26,7 +26,7 @@ public sealed record CommandDto(
         {
             FinishDraftCommand draft => new(CommandKind.FinishDraft, draft.Seat, CardIds: [.. draft.RedrawnCardIds]),
             PlayCardCommand play => new(CommandKind.PlayCard, play.Seat, play.CardId, play.Row, play.TargetId),
-            UseLeaderCommand leader => new(CommandKind.UseLeader, leader.Seat),
+            UseLeaderCommand leader => new(CommandKind.UseLeader, leader.Seat, TargetId: leader.TargetId),
             ResolveChoiceCommand choice => new(CommandKind.ResolveChoice, choice.Seat, choice.CardId),
             PassCommand pass => new(CommandKind.Pass, pass.Seat),
             ForfeitCommand forfeit => new(CommandKind.Forfeit, forfeit.Seat),
@@ -46,7 +46,7 @@ public sealed record CommandDto(
         {
             CommandKind.FinishDraft => new FinishDraftCommand(Seat, CardIds ?? []),
             CommandKind.PlayCard when CardId is { } card => new PlayCardCommand(Seat, card, Row, TargetId),
-            CommandKind.UseLeader => new UseLeaderCommand(Seat),
+            CommandKind.UseLeader => new UseLeaderCommand(Seat, TargetId),
             CommandKind.ResolveChoice when CardId is { } card => new ResolveChoiceCommand(Seat, card),
             CommandKind.Pass => new PassCommand(Seat),
             CommandKind.Forfeit => new ForfeitCommand(Seat),

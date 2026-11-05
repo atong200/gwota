@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "enchantress",
+  "name": "Enchantress",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 4,
+  "hero": true,
+  "abilities": [
+    "medic"
+  ]
+}

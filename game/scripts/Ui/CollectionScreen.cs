@@ -140,7 +140,8 @@ public sealed partial class CollectionScreen : Control
         "New deck",
         "Choose the deck's faction. It cannot be changed later.",
         FactionChoice(Faction.Realms),
-        FactionChoice(Faction.Hells));
+        FactionChoice(Faction.Abyss),
+        FactionChoice(Faction.Horde));
 
     private Choice FactionChoice(Faction faction) =>
         new(FactionInfo.Name(faction), () => Edit(_store.Create(faction, _data).Id), Palette.ForFaction(faction));

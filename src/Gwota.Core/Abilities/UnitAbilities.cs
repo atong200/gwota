@@ -18,7 +18,8 @@ internal static class UnitAbilities
         new SpyAbility(),
         new MedicAbility(),
         new MusterAbility(),
-        new ScorchRowAbility(),
+        new ScorchAbility(),
+        new ConcordAbility(),
     }.ToDictionary(h => h.Ability);
 
     public static IUnitAbilityHandler? Find(UnitAbility ability) => Handlers.GetValueOrDefault(ability);
@@ -36,11 +37,9 @@ internal sealed class MedicAbility : IUnitAbilityHandler
 {
     public UnitAbility Ability => UnitAbility.Medic;
 
-    public static bool CanBeRevived(CardInstance card) => card.Definition.IsUnit && !card.Definition.IsHero;
-
     public void OnPlay(MatchContext context, Seat player, CardInstance card, RowType row)
     {
-        var options = context.Player(player).DiscardList.Where(CanBeRevived).Select(c => c.Id).ToList();
+        var options = context.Player(player).DiscardList.Where(c => c.Definition.IsNonHeroUnit).Select(c => c.Id).ToList();
         if (options.Count > 0)
         {
             context.RequestChoice(player, ChoiceKind.MedicRevive, options);
@@ -60,8 +59,7 @@ internal sealed class MusterAbility : IUnitAbilityHandler
             return;
         }
 
-        var playerState = context.Player(player);
-        var mustered = playerState.DeckList.Where(c => c.Definition.MusterGroup == group).ToList();
+        var mustered = context.Player(player).DeckList.Where(c => c.Definition.MusterGroup == group).ToList();
         if (mustered.Count == 0)
         {
             return;
@@ -69,19 +67,28 @@ internal sealed class MusterAbility : IUnitAbilityHandler
 
         foreach (var musteredCard in mustered)
         {
-            playerState.DeckList.Remove(musteredCard);
             var targetRow = musteredCard.Definition.Rows.Contains(row) ? row : musteredCard.Definition.Rows[0];
-            playerState.Row(targetRow).CardList.Add(musteredCard);
+            context.MoveDeckToRow(player, musteredCard, targetRow);
         }
 
         context.Emit(new CardsMustered(player, mustered));
     }
 }
 
-internal sealed class ScorchRowAbility : IUnitAbilityHandler
+internal sealed class ScorchAbility : IUnitAbilityHandler
 {
-    public UnitAbility Ability => UnitAbility.ScorchRow;
+    public UnitAbility Ability => UnitAbility.Scorch;
 
-    public void OnPlay(MatchContext context, Seat player, CardInstance card, RowType row) =>
-        context.ScorchRow(player.Opponent(), row);
+    public void OnPlay(MatchContext context, Seat player, CardInstance card, RowType row) => context.ScorchBattlefield();
+}
+
+internal sealed class ConcordAbility : IUnitAbilityHandler
+{
+    public UnitAbility Ability => UnitAbility.Concord;
+
+    public void OnPlay(MatchContext context, Seat player, CardInstance card, RowType row)
+    {
+        context.Draw(player, card.Definition.ConcordDraw);
+        context.Draw(player.Opponent(), card.Definition.ConcordDraw);
+    }
 }

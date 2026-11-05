@@ -24,7 +24,7 @@ internal static class TestDecks
             muster, muster, muster,
             Own(TestCards.WithAbility(3, UnitAbility.MoraleBoost, RowType.Siege)),
             Own(TestCards.WithAbility(2, UnitAbility.Horn, RowType.Ranged)),
-            Own(TestCards.WithAbility(5, UnitAbility.ScorchRow)),
+            Own(TestCards.WithAbility(5, UnitAbility.Scorch)),
             Own(TestCards.Agile(6)),
             Own(TestCards.Unit(8, RowType.Siege)),
             Own(TestCards.Unit(7, RowType.Ranged)),
@@ -44,7 +44,7 @@ internal static class TestDecks
 
         var leader = faction == Faction.Realms
             ? TestCards.Leader(LeaderAbility.HornRow, RowType.Siege)
-            : TestCards.Leader(LeaderAbility.ReturnFromDiscard, faction: Faction.Hells);
+            : TestCards.Leader(LeaderAbility.ReturnFromDiscard, faction: Faction.Abyss);
         return new PlayerSetup(faction.ToString(), faction, leader, cards);
     }
 }

@@ -58,6 +58,56 @@ public class UnitAbilityTests
         _scenario.One.Deck.ShouldBeEmpty();
     }
 
+    private CardInstance Filler(Seat seat) => _scenario.State.Player(seat).Hand.First(c => c.Definition == Scenario.FillerCard);
+
+    [Fact]
+    public void Concord_makes_its_player_then_the_opponent_draw()
+    {
+        var concord = _scenario.AddToHand(Seat.One, TestCards.Concord(2, strength: 3));
+        var mine = Enumerable.Range(0, 3).Select(_ => _scenario.AddToDeck(Seat.One, TestCards.Unit(2))).ToList();
+        var theirs = Enumerable.Range(0, 3).Select(_ => _scenario.AddToDeck(Seat.Two, TestCards.Unit(4))).ToList();
+        var engine = _scenario.Build();
+
+        var events = engine.Play(concord);
+
+        _scenario.One.Row(RowType.Melee).Cards.ShouldBe([concord]);
+        _scenario.One.Hand.ShouldBe([Filler(Seat.One), mine[0], mine[1]]);
+        _scenario.Two.Hand.ShouldBe([Filler(Seat.Two), theirs[0], theirs[1]]);
+        events.OfType<CardsDrawn>().Select(e => e.Seat).ShouldBe([Seat.One, Seat.Two]);
+        engine.Score(Seat.One).ShouldBe(3);
+        engine.State.ActiveSeat.ShouldBe(Seat.Two);
+    }
+
+    [Fact]
+    public void Concord_draws_only_what_each_deck_has_left()
+    {
+        var concord = _scenario.AddToHand(Seat.One, TestCards.Concord(2));
+        _scenario.AddToDeck(Seat.One, TestCards.Unit(2));
+        var engine = _scenario.Build();
+
+        engine.Play(concord);
+
+        _scenario.One.Hand.Count.ShouldBe(2);
+        _scenario.One.Deck.ShouldBeEmpty();
+        _scenario.Two.Hand.ShouldBe([Filler(Seat.Two)]);
+    }
+
+    [Fact]
+    public void Concord_revived_by_a_medic_draws_again()
+    {
+        var medic = _scenario.AddToHand(Seat.One, TestCards.Medic());
+        var concord = _scenario.AddToDiscard(Seat.One, TestCards.Concord(1));
+        _scenario.AddToDeck(Seat.One, TestCards.Unit(2));
+        _scenario.AddToDeck(Seat.Two, TestCards.Unit(2));
+        var engine = _scenario.Build();
+
+        engine.Play(medic);
+        engine.Choose(Seat.One, concord);
+
+        _scenario.One.Hand.Count.ShouldBe(2);
+        _scenario.Two.Hand.Count.ShouldBe(2);
+    }
+
     [Fact]
     public void Medic_requests_a_choice_among_non_hero_units_in_discard()
     {
@@ -179,45 +229,60 @@ public class UnitAbilityTests
     }
 
     [Fact]
-    public void Scorch_row_destroys_the_strongest_enemy_units_in_the_same_row_at_threshold()
+    public void Scorch_destroys_the_strongest_units_on_both_sides_including_ties()
     {
-        var scorcher = _scenario.AddToHand(Seat.One, TestCards.WithAbility(4, UnitAbility.ScorchRow));
-        var strongA = _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(5));
-        var strongB = _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(5));
+        var scorcher = _scenario.AddToHand(Seat.One, TestCards.WithAbility(4, UnitAbility.Scorch));
+        var enemyStrong = _scenario.AddToBoard(Seat.Two, RowType.Ranged, TestCards.Unit(7, RowType.Ranged));
+        var ownStrong = _scenario.AddToBoard(Seat.One, RowType.Siege, TestCards.Unit(7, RowType.Siege));
         var weak = _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(2));
-        var hero = _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Hero(8));
+        var hero = _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Hero(9));
         var engine = _scenario.Build();
 
         engine.Play(scorcher);
 
+        _scenario.Two.Discard.ShouldBe([enemyStrong]);
+        _scenario.One.Discard.ShouldBe([ownStrong]);
         _scenario.Two.Row(RowType.Melee).Cards.ShouldBe([weak, hero]);
-        _scenario.Two.Discard.ShouldBe([strongA, strongB], ignoreOrder: true);
+        _scenario.One.Row(RowType.Melee).Cards.ShouldBe([scorcher]);
     }
 
     [Fact]
-    public void Scorch_row_does_nothing_below_threshold()
+    public void Scorch_has_no_row_threshold()
     {
-        var scorcher = _scenario.AddToHand(Seat.One, TestCards.WithAbility(4, UnitAbility.ScorchRow));
-        _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(5));
-        _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(4));
+        var scorcher = _scenario.AddToHand(Seat.One, TestCards.WithAbility(1, UnitAbility.Scorch));
+        var lone = _scenario.AddToBoard(Seat.Two, RowType.Siege, TestCards.Unit(3, RowType.Siege));
         var engine = _scenario.Build();
 
         engine.Play(scorcher);
 
-        _scenario.Two.Row(RowType.Melee).Cards.Count.ShouldBe(2);
+        _scenario.Two.Discard.ShouldBe([lone]);
     }
 
     [Fact]
-    public void Scorch_row_ignores_other_rows_and_own_side()
+    public void Scorch_destroys_its_own_card_when_it_is_the_strongest()
     {
-        var scorcher = _scenario.AddToHand(Seat.One, TestCards.WithAbility(4, UnitAbility.ScorchRow));
-        _scenario.AddToBoard(Seat.Two, RowType.Ranged, TestCards.Unit(12, RowType.Ranged));
-        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(12));
+        var scorcher = _scenario.AddToHand(Seat.One, TestCards.WithAbility(8, UnitAbility.Scorch));
+        var other = _scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(5));
         var engine = _scenario.Build();
 
         engine.Play(scorcher);
 
-        _scenario.Two.Row(RowType.Ranged).Cards.Count.ShouldBe(1);
-        _scenario.One.Row(RowType.Melee).Cards.Count.ShouldBe(2);
+        _scenario.One.Discard.ShouldBe([scorcher]);
+        _scenario.Two.Row(RowType.Melee).Cards.ShouldBe([other]);
+    }
+
+    [Fact]
+    public void Spy_draws_only_up_to_the_hand_limit()
+    {
+        _scenario.FillHand(Seat.One, MatchRules.Classic.MaxHandSize - 1);
+
+        var spy = _scenario.AddToHand(Seat.One, TestCards.Spy());
+        var deckCards = Enumerable.Range(0, 3).Select(_ => _scenario.AddToDeck(Seat.One, TestCards.Unit(2))).ToList();
+        var engine = _scenario.Build();
+
+        engine.Play(spy);
+
+        _scenario.One.Hand.Count.ShouldBe(MatchRules.Classic.MaxHandSize);
+        _scenario.One.Deck.ShouldBe([deckCards[1], deckCards[2]]);
     }
 }

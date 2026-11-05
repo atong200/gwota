@@ -31,7 +31,7 @@ internal sealed class MatchContext(MatchState state, MatchRules rules, IRandom r
     {
         var player = Player(seat);
         var drawn = new List<CardInstance>(count);
-        while (drawn.Count < count && player.DeckList.Count > 0)
+        while (drawn.Count < count && player.DeckList.Count > 0 && !player.IsHandFull)
         {
             var card = player.DeckList[0];
             player.DeckList.RemoveAt(0);
@@ -47,10 +47,10 @@ internal sealed class MatchContext(MatchState state, MatchRules rules, IRandom r
         return drawn;
     }
 
-    /// <summary>Puts a unit into play (spies go to the opponent's side) and triggers its on-play abilities.</summary>
+    /// <summary>Puts a unit into play on its placement side and triggers its on-play abilities.</summary>
     public void PlayUnit(Seat player, CardInstance card, RowType row)
     {
-        var side = card.Definition.Has(UnitAbility.Spy) ? player.Opponent() : player;
+        var side = card.Definition.PlacementSide(player);
         Player(side).Row(row).CardList.Add(card);
         Emit(new CardPlayed(player, card, side, row));
 
@@ -58,6 +58,49 @@ internal sealed class MatchContext(MatchState state, MatchRules rules, IRandom r
         {
             UnitAbilities.Find(ability)?.OnPlay(this, player, card, row);
         }
+    }
+
+    public CardInstance TakeFromHand(Seat seat, int cardId) => Take(Player(seat).HandList, cardId, "hand");
+
+    public CardInstance TakeFromDeck(Seat seat, int cardId) => Take(Player(seat).DeckList, cardId, "deck");
+
+    public CardInstance TakeFromDiscard(Seat seat, int cardId) => Take(Player(seat).DiscardList, cardId, "discard pile");
+
+    /// <summary>Takes a card off <paramref name="seat"/>'s side of the board (its rows, not the horn slots).</summary>
+    public CardInstance TakeFromBoard(Seat seat, int cardId)
+    {
+        foreach (var row in Player(seat).Rows)
+        {
+            var index = row.CardList.FindIndex(c => c.Id == cardId);
+            if (index >= 0)
+            {
+                var card = row.CardList[index];
+                row.CardList.RemoveAt(index);
+                return card;
+            }
+        }
+
+        throw new InvalidOperationException($"Card {cardId} is not on seat {seat}'s board.");
+    }
+
+    /// <summary>Puts a card into <paramref name="player"/>'s hand; a card from the other side (an enemy spy) changes owner.</summary>
+    public CardInstance ReturnToHand(Seat player, CardInstance card)
+    {
+        var returned = card.Owner == player ? card : card with { Owner = player };
+        Player(player).HandList.Add(returned);
+        Emit(new CardReturnedToHand(player, returned));
+        return returned;
+    }
+
+    /// <summary>Moves a card from <paramref name="seat"/>'s deck straight onto one of their rows, without on-play abilities.</summary>
+    public void MoveDeckToRow(Seat seat, CardInstance card, RowType row) =>
+        Player(seat).Row(row).CardList.Add(TakeFromDeck(seat, card.Id));
+
+    /// <summary>Puts a weather card in play for both sides.</summary>
+    public void AddWeather(Seat player, CardInstance weather)
+    {
+        State.WeatherList.Add(weather);
+        Emit(new CardPlayed(player, weather, player, null));
     }
 
     public void Discard(CardInstance card) => Player(card.Owner).DiscardList.Add(card);
@@ -97,11 +140,14 @@ internal sealed class MatchContext(MatchState state, MatchRules rules, IRandom r
     public IEnumerable<(BoardRow Row, CardInstance Card)> UnitsOnBoard(Seat side) =>
         Player(side).Rows.SelectMany(row => row.Cards.Select(card => (row, card)));
 
+    /// <summary>Destroys the strongest non-hero unit(s) on both sides of the battlefield.</summary>
+    public void ScorchBattlefield() => ScorchStrongest(UnitsOnBoard(Seat.One).Concat(UnitsOnBoard(Seat.Two)));
+
     /// <summary>Destroys the strongest non-hero unit(s) among the candidates (all ties die).</summary>
     public void ScorchStrongest(IEnumerable<(BoardRow Row, CardInstance Card)> candidates)
     {
         var scored = candidates
-            .Where(c => c.Card.Definition.IsUnit && !c.Card.Definition.IsHero)
+            .Where(c => c.Card.Definition.IsNonHeroUnit)
             .Select(c => (c.Card, Strength: StrengthCalculator.Calculate(State, c.Row, c.Card)))
             .ToList();
 
@@ -136,6 +182,19 @@ internal sealed class MatchContext(MatchState state, MatchRules rules, IRandom r
         var choice = new PendingChoice(seat, kind, options);
         State.PendingChoice = choice;
         Emit(new ChoiceRequested(choice));
+    }
+
+    private static CardInstance Take(List<CardInstance> pile, int cardId, string pileName)
+    {
+        var index = pile.FindIndex(c => c.Id == cardId);
+        if (index < 0)
+        {
+            throw new InvalidOperationException($"Card {cardId} is not in the {pileName}.");
+        }
+
+        var card = pile[index];
+        pile.RemoveAt(index);
+        return card;
     }
 
     private void RemoveFromBoard(CardInstance card)

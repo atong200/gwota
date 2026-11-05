@@ -22,6 +22,9 @@ internal static class SpecialEffects
     }.ToDictionary(h => h.Effect);
 
     public static ISpecialEffectHandler Get(SpecialEffect effect) => Handlers[effect];
+
+    public static RowType RequireRow(PlayCardCommand command) =>
+        command.Row ?? throw new InvalidOperationException($"{command} needs a row.");
 }
 
 internal sealed class HornEffect : ISpecialEffectHandler
@@ -40,7 +43,7 @@ internal sealed class HornEffect : ISpecialEffectHandler
 
     public void Resolve(MatchContext context, PlayCardCommand command, CardInstance card)
     {
-        var row = command.Row!.Value;
+        var row = SpecialEffects.RequireRow(command);
         context.Player(command.Seat).Row(row).HornCard = card;
         context.Emit(new CardPlayed(command.Seat, card, command.Seat, row));
     }
@@ -56,7 +59,7 @@ internal sealed class ScorchEffect : ISpecialEffectHandler
     public void Resolve(MatchContext context, PlayCardCommand command, CardInstance card)
     {
         context.Emit(new CardPlayed(command.Seat, card, command.Seat, null));
-        context.ScorchStrongest(context.UnitsOnBoard(Seat.One).Concat(context.UnitsOnBoard(Seat.Two)));
+        context.ScorchBattlefield();
         context.Discard(card);
     }
 }
@@ -65,26 +68,25 @@ internal sealed class DecoyEffect : ISpecialEffectHandler
 {
     public SpecialEffect Effect => SpecialEffect.Decoy;
 
-    public static bool CanBeDecoyed(CardInstance card) => card.Definition.IsUnit && !card.Definition.IsHero;
-
     public IEnumerable<PlayCardCommand> LegalPlays(MatchState state, Seat seat, CardInstance card) =>
         state.Player(seat).Rows.SelectMany(row => row.Cards
-            .Where(CanBeDecoyed)
+            .Where(c => c.Definition.IsNonHeroUnit)
             .Select(target => new PlayCardCommand(seat, card.Id, row.Type, target.Id)));
 
     public void Resolve(MatchContext context, PlayCardCommand command, CardInstance card)
     {
-        var row = context.Player(command.Seat).Row(command.Row!.Value);
+        var row = context.Player(command.Seat).Row(SpecialEffects.RequireRow(command));
         var index = row.CardList.FindIndex(c => c.Id == command.TargetId);
+        if (index < 0)
+        {
+            throw new InvalidOperationException($"Decoy target {command.TargetId} is not in the {row.Type} row.");
+        }
+
         var target = row.CardList[index];
         row.CardList[index] = card;
 
-        // A decoyed enemy spy now belongs to the decoy's player.
-        var returned = target with { Owner = command.Seat };
-        context.Player(command.Seat).HandList.Add(returned);
-
         context.Emit(new CardPlayed(command.Seat, card, command.Seat, row.Type));
-        context.Emit(new CardReturnedToHand(command.Seat, returned));
+        context.ReturnToHand(command.Seat, target);
     }
 }
 
@@ -95,11 +97,7 @@ internal sealed class WeatherEffect : ISpecialEffectHandler
     public IEnumerable<PlayCardCommand> LegalPlays(MatchState state, Seat seat, CardInstance card) =>
         [new PlayCardCommand(seat, card.Id)];
 
-    public void Resolve(MatchContext context, PlayCardCommand command, CardInstance card)
-    {
-        context.State.WeatherList.Add(card);
-        context.Emit(new CardPlayed(command.Seat, card, command.Seat, null));
-    }
+    public void Resolve(MatchContext context, PlayCardCommand command, CardInstance card) => context.AddWeather(command.Seat, card);
 }
 
 internal sealed class ClearWeatherEffect : ISpecialEffectHandler

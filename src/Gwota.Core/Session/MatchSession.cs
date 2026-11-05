@@ -10,6 +10,7 @@ public sealed class MatchSession
 {
     private readonly Dictionary<Seat, IPlayerController> _controllers;
     private readonly List<GameEvent> _history = [];
+    private readonly Dictionary<Seat, IReadOnlyList<GameCommand>> _legal = [];
 
     public MatchSession(MatchEngine engine, IReadOnlyDictionary<Seat, IPlayerController> controllers)
     {
@@ -51,14 +52,26 @@ public sealed class MatchSession
 
     public ulong Checksum() => StateChecksum.Compute(State);
 
+    /// <summary>Every legal command for <paramref name="seat"/>, cached until the next command is applied.</summary>
+    public IReadOnlyList<GameCommand> GetLegalCommands(Seat seat)
+    {
+        if (!_legal.TryGetValue(seat, out var legal))
+        {
+            legal = Engine.GetLegalCommands(seat);
+            _legal[seat] = legal;
+        }
+
+        return legal;
+    }
+
     /// <summary>Legal ways for <paramref name="seat"/> to play the given hand card (rows, decoy targets).</summary>
     public IReadOnlyList<PlayCardCommand> PlayOptions(Seat seat, int cardId) =>
-        Engine.GetLegalCommands(seat).OfType<PlayCardCommand>().Where(c => c.CardId == cardId).ToList();
+        GetLegalCommands(seat).OfType<PlayCardCommand>().Where(c => c.CardId == cardId).ToList();
 
     public bool IsLegal(GameCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return Engine.GetLegalCommands(command.Seat).Contains(command);
+        return Engine.IsLegal(command);
     }
 
     /// <summary>Applies a command on behalf of a human seat. Controller-driven seats are rejected.</summary>
@@ -105,6 +118,7 @@ public sealed class MatchSession
         var result = Engine.Apply(command);
         if (result.IsSuccess)
         {
+            _legal.Clear();
             _history.AddRange(result.Events);
             EventsApplied?.Invoke(this, result.Events);
         }

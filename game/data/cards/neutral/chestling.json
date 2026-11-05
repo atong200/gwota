@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "chestling",
+  "name": "Chestling",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 2,
+  "abilities": [
+    "concord"
+  ],
+  "concord": 1
+}

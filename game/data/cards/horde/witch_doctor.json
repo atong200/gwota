@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "witch_doctor",
+  "name": "Witch Doctor",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 4,
+  "abilities": [
+    "medic"
+  ],
+  "description": "Zharvakko. Voodoo Restoration."
+}

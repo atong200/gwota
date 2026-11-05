@@ -9,7 +9,7 @@ public class HeuristicAiTests
     [Fact]
     public void Keeps_its_hand_in_the_draft_phase()
     {
-        var engine = MatchRunner.NewMatch(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Hells), seed: 1);
+        var engine = MatchRunner.NewMatch(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Abyss), seed: 1);
 
         _ai.Decide(engine, Seat.One).ShouldBe(FinishDraftCommand.KeepHand(Seat.One));
     }
@@ -50,6 +50,20 @@ public class HeuristicAiTests
     }
 
     [Fact]
+    public void Plays_a_concord_card_when_behind()
+    {
+        var scenario = new Scenario(withFillers: false);
+        var concord = scenario.AddToHand(Seat.One, TestCards.Concord(2, strength: 3));
+        scenario.AddToHand(Seat.Two, Scenario.FillerCard);
+        scenario.AddToDeck(Seat.One, TestCards.Unit(4));
+        scenario.AddToDeck(Seat.Two, TestCards.Unit(4));
+        scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(2));
+        scenario.One.Gems = 1;
+        var engine = scenario.Build();
+
+        _ai.Decide(engine, Seat.One).ShouldBe(new PlayCardCommand(Seat.One, concord.Id, RowType.Melee));
+    }
+    [Fact]
     public void Prefers_a_spy_for_card_advantage()
     {
         var scenario = new Scenario();
@@ -73,6 +87,39 @@ public class HeuristicAiTests
         _ai.Decide(engine, Seat.One).ShouldBe(new PassCommand(Seat.One));
     }
 
+    [Theory]
+    [InlineData(Faction.Horde, true)]
+    [InlineData(Faction.Neutral, false)]
+    public void A_tie_against_a_passed_opponent_is_enough_only_when_ties_are_won(Faction faction, bool passes)
+    {
+        var scenario = new Scenario(factionOne: faction);
+        scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(5));
+        scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(5));
+        AddUnits(scenario, Seat.One, 1);
+        scenario.Two.HasPassed = true;
+        var engine = scenario.Build();
+
+        var command = _ai.Decide(engine, Seat.One);
+
+        (command is PassCommand).ShouldBe(passes);
+    }
+
+    [Theory]
+    [InlineData(Faction.Horde, true)]
+    [InlineData(Faction.Neutral, false)]
+    public void A_tie_against_the_horde_counts_as_behind(Faction opponent, bool passes)
+    {
+        var scenario = new Scenario(factionTwo: opponent);
+        scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(3));
+        scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(3));
+        AddUnits(scenario, Seat.One, 2);
+        AddUnits(scenario, Seat.Two, 2);
+        var engine = scenario.Build();
+
+        var command = _ai.Decide(engine, Seat.One);
+
+        (command is PassCommand).ShouldBe(passes);
+    }
     [Fact]
     public void Takes_the_lead_against_a_passed_opponent_with_the_cheapest_winning_move()
     {
@@ -192,7 +239,7 @@ public class HeuristicAiTests
         for (ulong seed = 1; seed <= 20; seed++)
         {
             var one = TestDecks.Mixed(Faction.Realms);
-            var two = TestDecks.Mixed(Faction.Hells);
+            var two = TestDecks.Mixed(Faction.Abyss);
             var result = MatchRunner.Run(one, two, seed);
             firstRoundPlays += CountFirstRoundCardPlays(MatchRunner.NewMatch(one, two, seed), result.Commands);
             matches++;
@@ -247,8 +294,8 @@ public class HeuristicAiTests
     [Fact]
     public void Decisions_are_deterministic()
     {
-        var a = MatchRunner.Run(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Hells), seed: 42);
-        var b = MatchRunner.Run(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Hells), seed: 42);
+        var a = MatchRunner.Run(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Abyss), seed: 42);
+        var b = MatchRunner.Run(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Abyss), seed: 42);
 
         a.Commands.ShouldBe(b.Commands);
         a.Outcome.ShouldBe(b.Outcome);
@@ -259,7 +306,7 @@ public class HeuristicAiTests
     {
         for (ulong seed = 1; seed <= 60; seed++)
         {
-            var result = MatchRunner.Run(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Hells), seed);
+            var result = MatchRunner.Run(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Abyss), seed);
 
             result.Engine.IsFinished.ShouldBeTrue($"seed {seed}");
             result.Engine.State.RoundResults.Count.ShouldBeInRange(2, 3, $"seed {seed}");

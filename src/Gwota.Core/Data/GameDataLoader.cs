@@ -68,10 +68,11 @@ public static partial class GameDataLoader
         where TDefinition : class
     {
         var result = new Dictionary<string, TDefinition>(StringComparer.Ordinal);
-        foreach (var path in source.ListFiles(directory, JsonExtension))
+        foreach (var sourcePath in source.ListFiles(directory, JsonExtension))
         {
+            var path = sourcePath.Replace('\\', '/');
             var fileErrors = new List<string>();
-            var definition = Parse<TDto>(source, path, fileErrors) is { } dto ? validate(dto, path, fileErrors) : null;
+            var definition = Parse<TDto>(source, sourcePath, fileErrors) is { } dto ? validate(dto, path, fileErrors) : null;
 
             if (definition is not null && !result.TryAdd(idOf(definition), definition))
             {
@@ -149,23 +150,24 @@ public static partial class GameDataLoader
             ValidateSpecial(dto, rows, abilities, errors);
         }
 
-        if (errors.Count > 0)
+        if (errors.Count > 0 || dto is not { Id: { } id, Name: { } name, Faction: { } faction, Kind: { } kind })
         {
             return null;
         }
 
         return new CardDefinition
         {
-            Id = dto.Id!,
-            Name = dto.Name!,
-            Faction = dto.Faction!.Value,
-            Kind = dto.Kind!.Value,
+            Id = id,
+            Name = name,
+            Faction = faction,
+            Kind = kind,
             Rows = rows,
             Strength = dto.Strength ?? 0,
             IsHero = dto.Hero ?? false,
             Abilities = abilities,
             Effect = dto.Effect,
             MusterGroup = dto.MusterGroup,
+            ConcordDraw = dto.Concord ?? 0,
             Description = dto.Description,
         };
     }
@@ -190,6 +192,15 @@ public static partial class GameDataLoader
         if (abilities.Contains(UnitAbility.Muster) && string.IsNullOrWhiteSpace(dto.MusterGroup))
         {
             errors.Add("A unit with the 'muster' ability needs a 'musterGroup'.");
+        }
+
+        if (abilities.Contains(UnitAbility.Concord) && dto.Concord is null or < 1)
+        {
+            errors.Add("A unit with the 'concord' ability needs a 'concord' draw count of 1 or more.");
+        }
+        else if (!abilities.Contains(UnitAbility.Concord) && dto.Concord is not null)
+        {
+            errors.Add("'concord' needs the 'concord' ability.");
         }
     }
 
@@ -220,6 +231,11 @@ public static partial class GameDataLoader
             errors.Add("A special card cannot have a 'musterGroup'.");
         }
 
+        if (dto.Concord is not null)
+        {
+            errors.Add("A special card cannot have a 'concord' draw count.");
+        }
+
         switch (dto.Effect)
         {
             case SpecialEffect.Weather when rows.Count == 0:
@@ -245,7 +261,7 @@ public static partial class GameDataLoader
         }
         else
         {
-            var needsRow = dto.Ability is LeaderAbility.HornRow or LeaderAbility.ScorchRow or LeaderAbility.PlayWeatherFromDeck;
+            var needsRow = dto.Ability.Value.UsesRow();
             if (needsRow && dto.Row is null)
             {
                 errors.Add($"Ability '{ToDataName(dto.Ability.Value)}' needs a 'row'.");
@@ -256,16 +272,21 @@ public static partial class GameDataLoader
             }
         }
 
-        return errors.Count > 0
+        if (string.IsNullOrWhiteSpace(dto.AbilityName))
+        {
+            errors.Add("'abilityName' is required.");
+        }
+
+        return errors.Count > 0 || dto is not { Id: { } id, Name: { } name, Faction: { } faction, Ability: { } ability, AbilityName: { } abilityName }
             ? null
             : new LeaderDefinition
             {
-                Id = dto.Id!,
-                Name = dto.Name!,
-                Faction = dto.Faction!.Value,
-                Ability = dto.Ability!.Value,
+                Id = id,
+                Name = name,
+                Faction = faction,
+                Ability = ability,
                 Row = dto.Row,
-                Description = dto.Description,
+                AbilityName = abilityName.Trim(),
             };
     }
 
@@ -287,15 +308,15 @@ public static partial class GameDataLoader
             errors.Add("'cards' must list at least one card.");
         }
 
-        return errors.Count > 0
+        return errors.Count > 0 || dto is not { Id: { } id, Name: { } name, Faction: { } faction, Leader: { } leader, Cards: { } cards }
             ? null
             : new DeckDefinition
             {
-                Id = dto.Id!,
-                Name = dto.Name!,
-                Faction = dto.Faction!.Value,
-                LeaderId = dto.Leader!,
-                Cards = dto.Cards!.Select(kv => new DeckEntry(kv.Key, kv.Value)).ToList(),
+                Id = id,
+                Name = name,
+                Faction = faction,
+                LeaderId = leader,
+                Cards = cards.Select(kv => new DeckEntry(kv.Key, kv.Value)).ToList(),
             };
     }
 

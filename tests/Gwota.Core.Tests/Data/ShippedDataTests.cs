@@ -19,7 +19,7 @@ public class ShippedDataTests
     [Fact]
     public void Content_exists_for_every_playable_faction()
     {
-        foreach (var faction in new[] { Faction.Realms, Faction.Hells })
+        foreach (var faction in FactionInfo.Playable)
         {
             Data.Cards.Values.ShouldContain(c => c.Faction == faction);
             Data.Leaders.Values.ShouldContain(l => l.Faction == faction);
@@ -28,20 +28,88 @@ public class ShippedDataTests
     }
 
     [Fact]
-    public void Every_card_is_used_by_at_least_one_deck()
+    public void Every_faction_card_is_used_by_at_least_one_deck()
     {
         var used = Data.Decks.Values.SelectMany(d => d.Cards).Select(e => e.CardId).ToHashSet();
 
-        Data.Cards.Keys.Where(id => !used.Contains(id)).ShouldBeEmpty();
+        // Neutral cards are a shared pool for every deck, so starter decks need not use them all.
+        Data.Cards.Values.Where(c => c.Faction != Faction.Neutral && !used.Contains(c.Id)).Select(c => c.Id).ShouldBeEmpty();
     }
 
     [Fact]
-    public void Muster_groups_have_several_members()
+    public void Muster_groups_can_pull_more_than_one_card()
     {
         foreach (var group in Data.Cards.Values.Where(c => c.MusterGroup is not null).GroupBy(c => c.MusterGroup))
         {
-            group.Count().ShouldBeGreaterThan(1, $"muster group '{group.Key}'");
+            (group.Count() > 1 || group.Any(c => !c.IsHero)).ShouldBeTrue($"muster group '{group.Key}' has a single hero");
         }
+    }
+
+    [Theory]
+    [InlineData("dire_creep", RowType.Melee, 2, UnitAbility.Muster)]
+    [InlineData("dire_super_creep", RowType.Melee, 4, UnitAbility.Muster)]
+    [InlineData("radiant_creep", RowType.Melee, 2, UnitAbility.TightBond)]
+    [InlineData("radiant_super_creep", RowType.Melee, 4, UnitAbility.TightBond)]
+    [InlineData("alpha_dire_wolf", RowType.Melee, 4, UnitAbility.MoraleBoost)]
+    [InlineData("sapling", RowType.Melee, 1, UnitAbility.Muster)]
+    [InlineData("young_treant", RowType.Melee, 2, UnitAbility.Muster)]
+    [InlineData("elder_treant", RowType.Melee, 3, UnitAbility.Muster)]
+    [InlineData("chestling", RowType.Melee, 2, UnitAbility.Concord)]
+    [InlineData("courier", RowType.Melee, 1, UnitAbility.Concord)]
+    [InlineData("enchantress", RowType.Ranged, 4, UnitAbility.Medic)]
+    public void Neutral_units_have_their_stats(string id, RowType row, int strength, UnitAbility ability)
+    {
+        var card = Data.Cards[id];
+
+        card.Faction.ShouldBe(Faction.Neutral);
+        card.Rows.ShouldBe([row]);
+        card.Strength.ShouldBe(strength);
+        card.Abilities.ShouldBe([ability]);
+        if (ability == UnitAbility.Muster)
+        {
+            card.MusterGroup.ShouldBe(id);
+        }
+    }
+
+    [Theory]
+    [InlineData("catapult", RowType.Siege, 6)]
+    [InlineData("trebuchet", RowType.Siege, 7)]
+    [InlineData("animated_armor", RowType.Melee, 4)]
+    public void Plain_neutral_units_have_their_stats(string id, RowType row, int strength)
+    {
+        var card = Data.Cards[id];
+
+        card.Rows.ShouldBe([row]);
+        card.Strength.ShouldBe(strength);
+        card.Abilities.ShouldBeEmpty();
+        card.IsHero.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Concord_cards_and_heroes_are_set()
+    {
+        Data.Cards["chestling"].ConcordDraw.ShouldBe(1);
+        Data.Cards["courier"].ConcordDraw.ShouldBe(2);
+        Data.Cards["enchantress"].IsHero.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("dire_melee_creep")]
+    [InlineData("dire_ranged_creep")]
+    [InlineData("dire_catapult")]
+    [InlineData("radiant_melee_creep")]
+    [InlineData("radiant_ranged_creep")]
+    [InlineData("radiant_catapult")]
+    public void Retired_creeps_are_gone(string id) =>
+        Data.Cards.ShouldNotContainKey(id);
+
+    [Theory]
+    [InlineData("abyss_starter", "dire_creep", "dire_super_creep")]
+    [InlineData("realms_starter", "radiant_creep", "radiant_super_creep")]
+    public void Starter_decks_field_three_of_each_creep(string deck, string creep, string superCreep)
+    {
+        Data.Decks[deck].Cards.ShouldContain(new DeckEntry(creep, 3));
+        Data.Decks[deck].Cards.ShouldContain(new DeckEntry(superCreep, 3));
     }
 
     [Fact]
@@ -58,23 +126,25 @@ public class ShippedDataTests
     [Fact]
     public void Legacy_ids_point_to_shipped_content()
     {
-        Data.Cards.Keys.ShouldNotContain(id => LegacyIds.Cards.ContainsKey(id));
         Data.Leaders.Keys.ShouldNotContain(id => LegacyIds.Leaders.ContainsKey(id));
         LegacyIds.Cards.Values.Where(id => !Data.Cards.ContainsKey(id)).ShouldBeEmpty();
         LegacyIds.Leaders.Values.Where(id => !Data.Leaders.ContainsKey(id)).ShouldBeEmpty();
         LegacyIds.Factions.Values.ShouldAllBe(f => Enum.IsDefined(Enum.Parse<Faction>(f, ignoreCase: true)));
     }
 
-    [Fact]
-    public void Starter_decks_play_full_ai_matches()
+    [Theory]
+    [InlineData("realms_starter", "abyss_starter")]
+    [InlineData("abyss_starter", "horde_starter")]
+    [InlineData("horde_starter", "realms_starter")]
+    public void Starter_decks_play_full_ai_matches(string deckOne, string deckTwo)
     {
-        var realms = Data.CreatePlayerSetup("realms_starter", "Realms");
-        var hells = Data.CreatePlayerSetup("hells_starter", "Hells");
+        var one = Data.CreatePlayerSetup(deckOne, "One");
+        var two = Data.CreatePlayerSetup(deckTwo, "Two");
         var wins = new Dictionary<string, int>();
 
         for (ulong seed = 1; seed <= 40; seed++)
         {
-            var run = MatchRunner.Run(realms, hells, seed);
+            var run = MatchRunner.Run(one, two, seed);
             var key = run.Outcome.Winner?.ToString() ?? "Draw";
             wins[key] = wins.GetValueOrDefault(key) + 1;
         }

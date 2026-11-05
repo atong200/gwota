@@ -3,11 +3,12 @@ namespace Gwota.Core.Presentation;
 /// <summary>Player-facing rules text for cards and leaders (tooltips, card details).</summary>
 public static class CardText
 {
-    public static string Ability(UnitAbility ability) => AbilityLine(ability).Plain;
+    public static string Ability(UnitAbility ability, int concordDraw = 0) => AbilityLine(ability, concordDraw).Plain;
 
     public static string Effect(SpecialEffect effect, IReadOnlyList<RowType> rows) => EffectLine(effect, rows).Plain;
 
-    public static CardTextLine AbilityLine(UnitAbility ability) => ability switch
+    /// <summary>One ability as a line; <paramref name="concordDraw"/> is the card's <see cref="CardDefinition.ConcordDraw"/>.</summary>
+    public static CardTextLine AbilityLine(UnitAbility ability, int concordDraw = 0) => ability switch
     {
         UnitAbility.Spy => new("placed on your opponent's side; you draw 2 cards.", "Spy"),
         UnitAbility.Medic => new("revive a non-hero unit from your discard pile.", "Medic"),
@@ -15,7 +16,8 @@ public static class CardText
         UnitAbility.TightBond => new("strength multiplied by copies of this card in the row.", "Tight Bond"),
         UnitAbility.MoraleBoost => new("+1 to every other unit in its row.", "Morale Boost"),
         UnitAbility.Horn => new("doubles every other unit in its row.", "Horn"),
-        UnitAbility.ScorchRow => new("destroys the strongest enemy unit(s) in this row if the row totals 10+.", "Scorch"),
+        UnitAbility.Scorch => new("destroys the strongest non-hero unit(s) on the battlefield.", "Scorch"),
+        UnitAbility.Concord => new(concordDraw > 0 ? $"both players draw {Counted(concordDraw, "card")}." : "both players draw cards.", "Concord"),
         _ => throw new ArgumentOutOfRangeException(nameof(ability), ability, null),
     };
 
@@ -68,6 +70,13 @@ public static class CardText
     private static string Counted(int count, string noun) =>
         $"{count.ToString(System.Globalization.CultureInfo.InvariantCulture)} {noun}{(count == 1 ? string.Empty : noun.EndsWith('o') ? "es" : "s")}";
 
+    /// <summary>The leader's ability as one line, e.g. "Illuminate: Clear all weather effects.".</summary>
+    public static CardTextLine LeaderLine(LeaderDefinition leader)
+    {
+        ArgumentNullException.ThrowIfNull(leader);
+        return new CardTextLine(Leader(leader), leader.AbilityName);
+    }
+
     public static string Leader(LeaderDefinition leader)
     {
         ArgumentNullException.ThrowIfNull(leader);
@@ -79,6 +88,8 @@ public static class CardText
             LeaderAbility.HornRow => $"Double your {row} row.",
             LeaderAbility.ScorchRow => $"Destroy the strongest enemy {row} unit(s) if that row totals 10+.",
             LeaderAbility.ReturnFromDiscard => "Return a card from your discard pile to your hand.",
+            LeaderAbility.Scorch => "Destroy the strongest non-hero unit(s) on the battlefield.",
+            LeaderAbility.ReturnFromBoard => "Return one of your non-hero units from the board to your hand.",
             _ => throw new ArgumentOutOfRangeException(nameof(leader), leader.Ability, null),
         };
     }
@@ -106,7 +117,7 @@ public static class CardText
                 lines.Add(new CardTextLine("immune to weather, horns, scorch and medics. Only one copy per deck.", "Hero"));
             }
 
-            lines.AddRange(card.Abilities.Select(AbilityLine));
+            lines.AddRange(card.Abilities.Select(ability => AbilityLine(ability, card.ConcordDraw)));
         }
         else if (card.Effect is { } effect)
         {

@@ -133,4 +133,31 @@ public class StrengthCalculatorTests
         StrengthCalculator.PlayerTotal(_scenario.State, Seat.One).ShouldBe(8);
         StrengthCalculator.PlayerTotal(_scenario.State, Seat.Two).ShouldBe(9);
     }
+
+    [Fact]
+    public void A_card_outside_the_row_gets_every_bonus_of_the_row()
+    {
+        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.WithAbility(2, UnitAbility.MoraleBoost));
+        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.WithAbility(2, UnitAbility.Horn));
+        var outsider = _scenario.AddToBoard(Seat.One, RowType.Ranged, TestCards.WithAbility(3, UnitAbility.MoraleBoost, id: "outsider"));
+
+        // morale +1 from the row's booster, then doubled by the row's horn unit
+        StrengthOf(outsider).ShouldBe(8);
+    }
+
+    [Fact]
+    public void Row_total_equals_the_sum_of_each_card_strength()
+    {
+        var bond = TestCards.WithAbility(4, UnitAbility.TightBond);
+        _scenario.AddToBoard(Seat.One, RowType.Melee, bond);
+        _scenario.AddToBoard(Seat.One, RowType.Melee, bond);
+        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.WithAbility(2, UnitAbility.MoraleBoost));
+        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.WithAbility(2, UnitAbility.MoraleBoost, id: "booster_b"));
+        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.WithAbility(1, UnitAbility.Horn));
+        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Hero(7));
+        _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Decoy());
+        var row = _scenario.One.Row(RowType.Melee);
+
+        StrengthCalculator.RowTotal(_scenario.State, row).ShouldBe(row.Cards.Sum(card => StrengthOf(card)));
+    }
 }

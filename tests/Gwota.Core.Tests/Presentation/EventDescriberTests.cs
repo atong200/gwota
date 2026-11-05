@@ -96,12 +96,12 @@ public class EventDescriberTests
     public void Every_event_of_real_matches_is_described_without_throwing()
     {
         var realms = TestDecks.Mixed(Faction.Realms);
-        var hells = TestDecks.Mixed(Faction.Hells);
+        var abyss = TestDecks.Mixed(Faction.Abyss);
 
         for (ulong seed = 1; seed <= 10; seed++)
         {
-            var run = MatchRunner.Run(realms, hells, seed);
-            var engine = MatchRunner.NewMatch(realms, hells, seed);
+            var run = MatchRunner.Run(realms, abyss, seed);
+            var engine = MatchRunner.NewMatch(realms, abyss, seed);
             var events = engine.InitialEvents.Concat(run.Commands.SelectMany(engine.ApplyOk)).ToList();
 
             events.ShouldAllBe(e => DescribeSafely(e, engine.State));

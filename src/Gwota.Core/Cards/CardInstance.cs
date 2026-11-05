@@ -6,5 +6,8 @@ namespace Gwota.Core.Cards;
 /// </summary>
 public sealed record CardInstance(int Id, CardDefinition Definition, Seat Owner)
 {
+    /// <summary>Which copy of its card this is in its owner's deck: 0 for the first, 1 for the second, and so on.</summary>
+    public int Copy { get; init; }
+
     public override string ToString() => $"{Definition.Name}#{Id}";
 }

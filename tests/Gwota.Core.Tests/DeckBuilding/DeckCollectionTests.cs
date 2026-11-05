@@ -22,15 +22,15 @@ public class DeckCollectionTests
 
         var first = collection.Create(Faction.Realms, Data);
         var second = collection.Create(Faction.Realms, Data);
-        var hells = collection.Create(Faction.Hells, Data);
+        var abyss = collection.Create(Faction.Abyss, Data);
 
         first.Id.ShouldBe("deck_1");
         second.Id.ShouldBe("deck_2");
         first.Name.ShouldBe("New Realms deck");
         second.Name.ShouldBe("New Realms deck 2");
-        hells.Name.ShouldBe("New Hells deck");
-        first.LeaderId.ShouldBe("abaddon");
-        hells.LeaderId.ShouldBe("underlord");
+        abyss.Name.ShouldBe("New Abyss deck");
+        first.LeaderId.ShouldBe("legion_commander");
+        abyss.LeaderId.ShouldBe("underlord");
         first.Cards.ShouldBeEmpty();
         collection.Count.ShouldBe(4);
     }
@@ -38,6 +38,25 @@ public class DeckCollectionTests
     [Fact]
     public void Neutral_decks_cannot_be_created() =>
         Should.Throw<ArgumentException>(() => DeckCollection.FromDefaults(Data).Create(Faction.Neutral, Data));
+
+    [Fact]
+    public void New_decks_can_start_with_a_chosen_leader_of_their_faction()
+    {
+        var deck = DeckCollection.FromDefaults(Data).Create(Faction.Realms, Data, "legion_commander");
+
+        deck.LeaderId.ShouldBe("legion_commander");
+    }
+
+    [Theory]
+    [InlineData("underlord")]
+    [InlineData("unknown")]
+    public void New_decks_refuse_a_leader_outside_their_faction(string leaderId)
+    {
+        var collection = DeckCollection.FromDefaults(Data);
+
+        Should.Throw<ArgumentException>(() => collection.Create(Faction.Realms, Data, leaderId));
+        collection.Count.ShouldBe(1);
+    }
 
     [Fact]
     public void Save_replaces_in_place_or_appends()
@@ -55,7 +74,7 @@ public class DeckCollectionTests
     public void The_last_deck_cannot_be_deleted()
     {
         var collection = DeckCollection.FromDefaults(Data);
-        var created = collection.Create(Faction.Hells, Data);
+        var created = collection.Create(Faction.Abyss, Data);
 
         collection.Delete("unknown").ShouldBeFalse();
         collection.Delete(created.Id).ShouldBeTrue();

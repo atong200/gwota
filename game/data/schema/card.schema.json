@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "card.schema.json",
   "title": "Gwota card",
-  "description": "One card per file: data/cards/<faction>/<id>.json. The file name must equal the id. Art is picked up automatically from assets/cards/<id>.png.",
+  "description": "One card per file: data/cards/<faction>/<id>.json. The file name must equal the id. Art is picked up automatically from assets/cards/<faction>/<id>.png.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "name", "faction", "kind"],
@@ -14,7 +14,7 @@
       "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$"
     },
     "name": { "description": "Display name.", "type": "string", "minLength": 1 },
-    "faction": { "enum": ["neutral", "realms", "hells"] },
+    "faction": { "enum": ["neutral", "realms", "abyss", "horde"] },
     "kind": { "enum": ["unit", "special"] },
     "rows": {
       "description": "Units: rows the card may be played in (several = agile). Weather: affected rows. Horn: allowed rows (all when omitted).",
@@ -28,13 +28,14 @@
       "description": "Unit abilities.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["spy", "medic", "muster", "tight_bond", "morale_boost", "horn", "scorch_row"] }
+      "items": { "enum": ["spy", "medic", "muster", "tight_bond", "morale_boost", "horn", "scorch", "concord"] }
     },
     "effect": {
       "description": "Special card effect.",
       "enum": ["horn", "scorch", "decoy", "weather", "clear_weather"]
     },
     "musterGroup": { "description": "Cards sharing a muster group are pulled from the deck together.", "type": "string" },
+    "concord": { "description": "Cards each player draws when a unit with the concord ability is played.", "type": "integer", "minimum": 1 },
     "description": { "description": "Optional flavour or rules text shown on the card.", "type": "string" }
   },
   "allOf": [
@@ -50,12 +51,20 @@
       "if": { "properties": { "kind": { "const": "special" } } },
       "then": {
         "required": ["effect"],
-        "not": { "anyOf": [{ "required": ["abilities"] }, { "required": ["musterGroup"] }, { "required": ["strength"] }] }
+        "not": { "anyOf": [{ "required": ["abilities"] }, { "required": ["musterGroup"] }, { "required": ["concord"] }, { "required": ["strength"] }] }
       }
     },
     {
       "if": { "properties": { "abilities": { "contains": { "const": "muster" } } }, "required": ["abilities"] },
       "then": { "required": ["musterGroup"] }
+    },
+    {
+      "if": { "properties": { "abilities": { "contains": { "const": "concord" } } }, "required": ["abilities"] },
+      "then": { "required": ["concord"] }
+    },
+    {
+      "if": { "required": ["concord"] },
+      "then": { "required": ["abilities"], "properties": { "abilities": { "contains": { "const": "concord" } } } }
     }
   ]
 }

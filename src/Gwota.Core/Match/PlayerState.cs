@@ -33,6 +33,11 @@ public sealed class PlayerState
     /// <summary>Most cards this player may redraw during the draft phase.</summary>
     public int RedrawLimit { get; internal set; }
 
+    /// <summary>Most cards the hand may hold; draws stop there.</summary>
+    public int HandLimit { get; internal set; } = int.MaxValue;
+
+    public bool IsHandFull => HandList.Count >= HandLimit;
+
     public bool HasFinishedDraft { get; internal set; }
 
     public IReadOnlyList<CardInstance> Deck => DeckList;
@@ -55,6 +60,46 @@ public sealed class PlayerState
 
     public BoardRow Row(RowType type) => _rows[(int)type];
 
+    /// <summary>The card with <paramref name="cardId"/> in this player's hand, or null.</summary>
+    public CardInstance? FindInHand(int cardId) => Find(HandList, cardId);
+
+    /// <summary>Finds a card in any of this player's zones (deck, hand, discard, board).</summary>
+    public CardInstance? FindCard(int cardId)
+    {
+        if ((Find(DeckList, cardId) ?? Find(HandList, cardId) ?? Find(DiscardList, cardId)) is { } card)
+        {
+            return card;
+        }
+
+        foreach (var row in _rows)
+        {
+            if (Find(row.CardList, cardId) is { } rowCard)
+            {
+                return rowCard;
+            }
+
+            if (row.HornCard?.Id == cardId)
+            {
+                return row.HornCard;
+            }
+        }
+
+        return null;
+    }
+
+    internal static CardInstance? Find(List<CardInstance> pile, int cardId)
+    {
+        foreach (var card in pile)
+        {
+            if (card.Id == cardId)
+            {
+                return card;
+            }
+        }
+
+        return null;
+    }
+
     internal PlayerState Clone()
     {
         var copy = new PlayerState(Seat, Name, Faction, Leader, Gems)
@@ -62,6 +107,7 @@ public sealed class PlayerState
             LeaderUsed = LeaderUsed,
             HasPassed = HasPassed,
             RedrawLimit = RedrawLimit,
+            HandLimit = HandLimit,
             HasFinishedDraft = HasFinishedDraft,
         };
         copy.DeckList.AddRange(DeckList);

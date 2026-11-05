@@ -74,7 +74,7 @@ public sealed partial class PlayerPanel : PanelContainer
         _leaderArt.Texture = CardArt.ForLeader(leader.Id);
         _leaderArt.Visible = _leaderArt.Texture is not null;
         _leader.Text = $"Leader: {leader.Name}{(player.LeaderUsed ? " (used)" : string.Empty)}";
-        _leader.TooltipText = CardText.Leader(leader) + (leader.Description is null ? string.Empty : "\n" + leader.Description);
+        _leader.TooltipText = CardText.LeaderLine(leader).Plain;
         _leader.Disabled = !canUseLeader;
 
         _style.BorderColor = isActive ? Palette.Highlight : Palette.PanelBorder;

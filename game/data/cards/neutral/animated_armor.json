@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "animated_armor",
+  "name": "Animated Armor",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4
+}

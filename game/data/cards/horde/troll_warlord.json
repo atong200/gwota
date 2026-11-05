@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "troll_warlord",
+  "name": "Troll Warlord",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee",
+    "ranged"
+  ],
+  "strength": 6,
+  "description": "Jah'rakal. Whirling Axes."
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "huskar",
+  "name": "Huskar",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 7,
+  "description": "Sacred Warrior. Burning Spear."
+}

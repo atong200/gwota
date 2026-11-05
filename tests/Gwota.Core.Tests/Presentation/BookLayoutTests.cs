@@ -52,6 +52,10 @@ public class BookLayoutTests
     }
 
     [Fact]
+    public void Cards_use_the_3_by_4_art_ratio() =>
+        BookLayout.CardAspect.ShouldBe(768f / 1024f);
+
+    [Fact]
     public void A_tiny_page_keeps_a_readable_card() =>
         BookLayout.Fit(50, 50, Counter).CardWidth.ShouldBe(40);
 

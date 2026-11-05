@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "sorla_khan",
+  "name": "Sorla Khan",
+  "faction": "horde",
+  "ability": "horn_row",
+  "row": "siege",
+  "abilityName": "Red Mist Chant"
+}

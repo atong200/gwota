@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "catapult",
+  "name": "Catapult",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 6
+}

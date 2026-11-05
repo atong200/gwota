@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "bloodseeker",
+  "name": "Bloodseeker",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "spy"
+  ],
+  "description": "Strygwyr, hound of the Flayed Twins. Thirst."
+}

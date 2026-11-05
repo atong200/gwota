@@ -32,9 +32,9 @@ public class CardBookTests
     {
         var book = Book();
 
-        book.Matching.ShouldNotContain(c => c.Faction == Faction.Hells);
+        book.Matching.ShouldNotContain(c => c.Faction == Faction.Abyss);
         book.Tab = Faction.Neutral;
-        book.Matching.ShouldNotContain(c => c.Faction == Faction.Hells);
+        book.Matching.ShouldNotContain(c => c.Faction == Faction.Abyss);
     }
 
     [Theory]
@@ -103,10 +103,10 @@ public class CardBookTests
     {
         var book = CardBook.ForCollection(DeckBuildingData.Create().Cards.Values);
 
-        book.Tabs.ShouldBe([Faction.Realms, Faction.Hells, Faction.Neutral]);
+        book.Tabs.ShouldBe([Faction.Realms, Faction.Abyss, Faction.Horde, Faction.Neutral]);
         book.Tab.ShouldBe(Faction.Realms);
-        book.Tab = Faction.Hells;
-        book.Matching.Select(c => c.Id).ShouldBe(["hells_1"]);
+        book.Tab = Faction.Abyss;
+        book.Matching.Select(c => c.Id).ShouldBe(["abyss_1"]);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class CardBookTests
     {
         var book = Book();
 
-        Should.Throw<ArgumentOutOfRangeException>(() => book.Tab = Faction.Hells);
+        Should.Throw<ArgumentOutOfRangeException>(() => book.Tab = Faction.Abyss);
         book.Tab.ShouldBe(Faction.Realms);
     }
 

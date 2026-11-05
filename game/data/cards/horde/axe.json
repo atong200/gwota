@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "axe",
+  "name": "Axe",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 10,
+  "hero": true,
+  "description": "Mogul Khan of the Red Mist. Culling Blade."
+}

@@ -8,7 +8,7 @@ public class NetCodecTests
     {
         new HelloMessage(1, "0.7.0", "abc", "Alice", Deck),
         new RejectMessage("No."),
-        new StartMessage(42, "Alice", Deck, "Bob", Deck),
+        new StartMessage(42, "Alice", Deck, "Bob", Deck with { CardBackId = "red_mist" }),
         new CommandMessage(CommandDto.From(new PassCommand(Seat.Two))),
         new AppliedMessage(3, CommandDto.From(new FinishDraftCommand(Seat.One, [1, 2])), ulong.MaxValue),
         new RefusedMessage("Illegal."),
@@ -26,6 +26,15 @@ public class NetCodecTests
         var decoded = NetCodec.Decode(line).ShouldNotBeNull();
         decoded.GetType().ShouldBe(message.GetType());
         NetCodec.Encode(decoded).ShouldBe(line);
+    }
+
+    [Fact]
+    public void The_card_back_id_is_on_the_wire()
+    {
+        var line = NetCodec.Encode(new HelloMessage(1, "0.7.0", "abc", "Alice", Deck with { CardBackId = "aegis" }));
+
+        line.ShouldContain("aegis");
+        NetCodec.Decode(line).ShouldBeOfType<HelloMessage>().Deck.CardBackId.ShouldBe("aegis");
     }
 
     [Theory]

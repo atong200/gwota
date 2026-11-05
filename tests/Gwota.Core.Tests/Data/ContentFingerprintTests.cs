@@ -36,6 +36,15 @@ public class ContentFingerprintTests
     }
 
     [Fact]
+    public void A_concord_change_changes_the_fingerprint()
+    {
+        var cards = Shipped.Cards.ToDictionary();
+        var courier = cards["courier"];
+        cards["courier"] = courier with { ConcordDraw = courier.ConcordDraw + 1 };
+
+        ContentFingerprint.Compute(new GameData(cards, Shipped.Leaders, Shipped.Decks)).ShouldNotBe(ContentFingerprint.Compute(Shipped));
+    }
+    [Fact]
     public void Flavor_text_does_not_change_the_fingerprint()
     {
         var cards = Shipped.Cards.ToDictionary();

@@ -4,7 +4,8 @@ public enum Faction
 {
     Neutral,
     Realms,
-    Hells,
+    Abyss,
+    Horde,
 }
 
 /// <summary>The three combat rows.</summary>
@@ -45,8 +46,11 @@ public enum UnitAbility
     /// <summary>Doubles the strength of every other unit in its row (does not stack with a horn).</summary>
     Horn,
 
-    /// <summary>Destroys the strongest enemy unit(s) in the matching row if that row totals at least the scorch threshold.</summary>
-    ScorchRow,
+    /// <summary>Destroys the strongest non-hero unit(s) on the whole battlefield, like the Scorch special.</summary>
+    Scorch,
+
+    /// <summary>Both players draw <see cref="CardDefinition.ConcordDraw"/> cards, its player first.</summary>
+    Concord,
 }
 
 /// <summary>Effects carried by special cards.</summary>
@@ -84,4 +88,17 @@ public enum LeaderAbility
 
     /// <summary>Returns a chosen card from the discard pile to the hand.</summary>
     ReturnFromDiscard,
+
+    /// <summary>Destroys the strongest non-hero unit(s) on the whole board, both sides (like the scorch card).</summary>
+    Scorch,
+
+    /// <summary>Returns a non-hero unit from the player's own side of the board to the hand (like a decoy, without a card).</summary>
+    ReturnFromBoard,
+}
+
+public static class LeaderAbilityExtensions
+{
+    /// <summary>True when the ability acts on a single row, given by the leader's <c>row</c>.</summary>
+    public static bool UsesRow(this LeaderAbility ability) =>
+        ability is LeaderAbility.HornRow or LeaderAbility.ScorchRow or LeaderAbility.PlayWeatherFromDeck;
 }

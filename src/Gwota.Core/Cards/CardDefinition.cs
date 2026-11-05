@@ -26,6 +26,9 @@ public sealed record CardDefinition
 
     public string? MusterGroup { get; init; }
 
+    /// <summary>Cards each player draws when a unit with <see cref="UnitAbility.Concord"/> is played; 0 otherwise.</summary>
+    public int ConcordDraw { get; init; }
+
     public string? Description { get; init; }
 
     public bool IsUnit => Kind == CardKind.Unit;
@@ -34,7 +37,13 @@ public sealed record CardDefinition
 
     public bool IsAgile => IsUnit && Rows.Count > 1;
 
+    /// <summary>A unit that effects may target: decoys, medics, scorch and the return-from-board leader skip heroes.</summary>
+    public bool IsNonHeroUnit => IsUnit && !IsHero;
+
     public bool Has(UnitAbility ability) => Abilities.Contains(ability);
 
     public bool Is(SpecialEffect effect) => Effect == effect;
+
+    /// <summary>Side of the board the card lands on when <paramref name="player"/> plays it: spies go to the opponent.</summary>
+    public Seat PlacementSide(Seat player) => Has(UnitAbility.Spy) ? player.Opponent() : player;
 }

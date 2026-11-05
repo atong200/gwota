@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "dire_super_creep",
+  "name": "Dire Super Creep",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "muster"
+  ],
+  "musterGroup": "dire_super_creep"
+}

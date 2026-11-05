@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "trebuchet",
+  "name": "Trebuchet",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 7
+}

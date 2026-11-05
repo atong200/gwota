@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "shadow_fiend",
+  "name": "Shadow Fiend",
+  "faction": "abyss",
+  "ability": "play_weather_from_deck",
+  "row": "siege",
+  "abilityName": "Requiem of Souls"
+}

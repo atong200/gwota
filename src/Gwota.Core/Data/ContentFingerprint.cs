@@ -17,6 +17,7 @@ public static class ContentFingerprint
             hash.Add(card.IsHero);
             hash.Add(card.Effect is { } effect ? (int)effect : -1);
             hash.Add(card.MusterGroup);
+            hash.Add(card.ConcordDraw);
             hash.Add(card.Rows.Count);
             foreach (var row in card.Rows)
             {

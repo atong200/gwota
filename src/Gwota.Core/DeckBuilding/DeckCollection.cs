@@ -36,12 +36,21 @@ public sealed class DeckCollection
 
     public DeckDefinition? Find(string id) => _decks.FirstOrDefault(d => d.Id == id);
 
-    /// <summary>Creates and appends an empty deck of <paramref name="faction"/> with a unique id and name and its default leader.</summary>
-    public DeckDefinition Create(Faction faction, GameData data)
+    /// <summary>
+    /// Creates and appends an empty deck of <paramref name="faction"/> with a unique id and name, led by
+    /// <paramref name="leaderId"/> (which must belong to the faction) or the faction's default leader.
+    /// </summary>
+    public DeckDefinition Create(Faction faction, GameData data, string? leaderId = null)
     {
+        ArgumentNullException.ThrowIfNull(data);
         if (faction == Faction.Neutral)
         {
             throw new ArgumentException("A deck faction cannot be Neutral.", nameof(faction));
+        }
+
+        if (leaderId is not null && !(data.Leaders.TryGetValue(leaderId, out var leader) && leader.Faction == faction))
+        {
+            throw new ArgumentException($"'{leaderId}' is not a {FactionInfo.Name(faction)} leader.", nameof(leaderId));
         }
 
         var deck = new DeckDefinition
@@ -49,7 +58,7 @@ public sealed class DeckCollection
             Id = UniqueId(),
             Name = UniqueName($"New {FactionInfo.ShortName(faction)} deck"),
             Faction = faction,
-            LeaderId = DeckEditor.DefaultLeader(data, faction).Id,
+            LeaderId = leaderId ?? DeckEditor.DefaultLeader(data, faction).Id,
             Cards = [],
         };
         _decks.Add(deck);

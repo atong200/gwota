@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "axe",
+  "name": "Axe",
+  "faction": "horde",
+  "ability": "play_weather_from_deck",
+  "row": "melee",
+  "abilityName": "Berserker's Call"
+}

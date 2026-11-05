@@ -1,21 +1,25 @@
 namespace Gwota.Core.DeckBuilding;
 
-/// <summary>Id renames applied to deck files saved before version 2.</summary>
+/// <summary>Id renames applied to older deck files, by the file version they apply to.</summary>
 internal static class LegacyIds
 {
+    /// <summary>Faction renames for files older than version 3 (version 1 files also go through these).</summary>
     public static readonly IReadOnlyDictionary<string, string> Factions = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["radiant"] = "realms",
-        ["dire"] = "hells",
+        ["dire"] = "abyss",
+        ["hells"] = "abyss",
     };
 
+    /// <summary>Leader renames for files older than version 2.</summary>
     public static readonly IReadOnlyDictionary<string, string> Leaders = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["elder_titan"] = "legion_commander",
-        ["zeus"] = "abaddon",
+        ["zeus"] = "luna",
         ["lich"] = "underlord",
     };
 
+    /// <summary>Card renames for files older than version 2.</summary>
     public static readonly IReadOnlyDictionary<string, string> Cards = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["earthshaker"] = "dragon_knight",

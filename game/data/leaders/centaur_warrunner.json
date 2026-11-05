@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "centaur_warrunner",
+  "name": "Centaur Warrunner",
+  "faction": "horde",
+  "ability": "horn_row",
+  "row": "melee",
+  "abilityName": "Stampede"
+}

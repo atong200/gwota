@@ -15,21 +15,54 @@ public sealed record FinishDraftCommand(Seat Seat, IReadOnlyList<int> RedrawnCar
     public static FinishDraftCommand KeepHand(Seat seat) => new(seat, []);
 
     public bool Equals(FinishDraftCommand? other) =>
-        other is not null && Seat == other.Seat && RedrawnCardIds.Order().SequenceEqual(other.RedrawnCardIds.Order());
+        other is not null && Seat == other.Seat && SameIds(RedrawnCardIds, other.RedrawnCardIds);
 
     public override int GetHashCode()
     {
-        var hash = new HashCode();
-        hash.Add(Seat);
-        foreach (var id in RedrawnCardIds.Order())
+        // Order-independent, like Equals.
+        var ids = 0;
+        foreach (var id in RedrawnCardIds)
         {
-            hash.Add(id);
+            ids = unchecked(ids + HashCode.Combine(id));
         }
 
-        return hash.ToHashCode();
+        return HashCode.Combine(Seat, RedrawnCardIds.Count, ids);
     }
 
     public override string ToString() => $"{nameof(FinishDraftCommand)} {{ Seat = {Seat}, RedrawnCardIds = [{string.Join(", ", RedrawnCardIds)}] }}";
+
+    /// <summary>Multiset equality without allocating; selections hold at most a few ids.</summary>
+    private static bool SameIds(IReadOnlyList<int> left, IReadOnlyList<int> right)
+    {
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        foreach (var id in left)
+        {
+            if (Occurrences(left, id) != Occurrences(right, id))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static int Occurrences(IReadOnlyList<int> ids, int id)
+    {
+        var count = 0;
+        foreach (var candidate in ids)
+        {
+            if (candidate == id)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
 }
 
 /// <summary>
@@ -38,7 +71,8 @@ public sealed record FinishDraftCommand(Seat Seat, IReadOnlyList<int> RedrawnCar
 /// </summary>
 public sealed record PlayCardCommand(Seat Seat, int CardId, RowType? Row = null, int? TargetId = null) : GameCommand(Seat);
 
-public sealed record UseLeaderCommand(Seat Seat) : GameCommand(Seat);
+/// <summary>Use the leader ability once per match. <paramref name="TargetId"/> is the unit picked by a targeted ability.</summary>
+public sealed record UseLeaderCommand(Seat Seat, int? TargetId = null) : GameCommand(Seat);
 
 /// <summary>Answer the current <see cref="PendingChoice"/> by picking one of its options.</summary>
 public sealed record ResolveChoiceCommand(Seat Seat, int CardId) : GameCommand(Seat);

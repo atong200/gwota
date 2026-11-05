@@ -84,10 +84,7 @@ public sealed class MatchState
 
     /// <summary>Finds a card anywhere in the match (hands, decks, discards, board, weather).</summary>
     public CardInstance? FindCard(int cardId) =>
-        _players
-            .SelectMany(p => p.DeckList.Concat(p.HandList).Concat(p.DiscardList).Concat(p.BoardCards))
-            .Concat(WeatherList)
-            .FirstOrDefault(c => c.Id == cardId);
+        _players[0].FindCard(cardId) ?? _players[1].FindCard(cardId) ?? PlayerState.Find(WeatherList, cardId);
 
     internal MatchState Clone()
     {

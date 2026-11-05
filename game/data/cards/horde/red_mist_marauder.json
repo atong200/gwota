@@ -1,0 +1,16 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "red_mist_marauder",
+  "name": "Red Mist Marauder",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 3,
+  "abilities": [
+    "muster"
+  ],
+  "description": "Raids first, asks never.",
+  "musterGroup": "red_mist"
+}

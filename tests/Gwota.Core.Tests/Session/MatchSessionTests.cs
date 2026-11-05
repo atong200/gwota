@@ -9,7 +9,7 @@ public class MatchSessionTests
         new Dictionary<Seat, IPlayerController> { [Seat.Two] = new HeuristicAi() };
 
     private static MatchSession NewSession(IReadOnlyDictionary<Seat, IPlayerController> controllers, ulong seed = 7) =>
-        new(MatchRunner.NewMatch(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Hells), seed), controllers);
+        new(MatchRunner.NewMatch(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Abyss), seed), controllers);
 
     [Fact]
     public void Human_acts_first_during_the_draft_and_controllers_wait()
@@ -166,6 +166,24 @@ public class MatchSessionTests
         var session = new MatchSession(scenario.Build(), new Dictionary<Seat, IPlayerController>());
 
         session.PlayOptions(Seat.One, decoy.Id).Select(c => c.TargetId).ShouldBe([target.Id]);
+    }
+
+    [Fact]
+    public void Legal_commands_are_cached_until_a_command_is_applied()
+    {
+        var scenario = new Scenario();
+        var unit = scenario.AddToHand(Seat.One, TestCards.Unit(3));
+        var session = new MatchSession(scenario.Build(), new Dictionary<Seat, IPlayerController>());
+
+        var before = session.GetLegalCommands(Seat.One);
+        session.GetLegalCommands(Seat.One).ShouldBeSameAs(before);
+        before.ShouldBe(session.Engine.GetLegalCommands(Seat.One));
+
+        session.Submit(new PlayCardCommand(Seat.One, unit.Id, RowType.Melee)).IsSuccess.ShouldBeTrue();
+
+        var after = session.GetLegalCommands(Seat.One);
+        after.ShouldNotBeSameAs(before);
+        after.ShouldBe(session.Engine.GetLegalCommands(Seat.One));
     }
 
     [Fact]

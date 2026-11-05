@@ -16,6 +16,9 @@ public sealed record MatchSetup(
 {
     public const string DefaultPlayerName = "Player One";
     public const string DefaultOpponentName = "Player Two";
+
+    /// <summary>The card back of the deck sitting in <paramref name="seat"/> (<see cref="PlayerDeck"/> sits in <see cref="Seat.One"/>).</summary>
+    public CardBackStyle CardBackFor(Seat seat) => CardBackStyle.Of(seat == Seat.One ? PlayerDeck : OpponentDeck);
 }
 
 /// <summary>Builds matches from loaded <see cref="GameData"/>. Against the AI, the human sits in <see cref="Seat.One"/>.</summary>

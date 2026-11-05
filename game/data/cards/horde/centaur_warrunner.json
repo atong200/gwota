@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "centaur_warrunner",
+  "name": "Centaur Warrunner",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 5,
+  "abilities": [
+    "morale_boost"
+  ],
+  "description": "Bradwarden of the Druud. Stampede."
+}

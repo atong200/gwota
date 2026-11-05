@@ -39,6 +39,9 @@ internal static class TestCards
     public static CardDefinition Medic(int strength = 1, RowType row = RowType.Melee) =>
         WithAbility(strength, UnitAbility.Medic, row, "medic");
 
+    public static CardDefinition Concord(int draw, int strength = 1, RowType row = RowType.Melee) =>
+        WithAbility(strength, UnitAbility.Concord, row, "concord") with { ConcordDraw = draw };
+
     public static CardDefinition Muster(int strength, string group, RowType row = RowType.Melee, string? id = null) =>
         Unit(strength, row, id ?? $"{group}_{row.ToString().ToLowerInvariant()}", musterGroup: group, abilities: UnitAbility.Muster);
 
@@ -72,5 +75,6 @@ internal static class TestCards
             Faction = faction,
             Ability = ability,
             Row = row,
+            AbilityName = ability + " Power",
         };
 }

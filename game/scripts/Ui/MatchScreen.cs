@@ -833,7 +833,7 @@ public sealed partial class MatchScreen : Control
         }
     }
 
-    private void PlayOn(PlayCardCommand? command)
+    private void PlayOn(GameCommand? command)
     {
         if (command is not null)
         {

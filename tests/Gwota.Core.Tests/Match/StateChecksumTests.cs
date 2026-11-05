@@ -6,7 +6,7 @@ namespace Gwota.Core.Tests.Match;
 public class StateChecksumTests
 {
     private static MatchSession NewSession(ulong seed = 7) =>
-        new(MatchRunner.NewMatch(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Hells), seed), new Dictionary<Seat, IPlayerController>());
+        new(MatchRunner.NewMatch(TestDecks.Mixed(Faction.Realms), TestDecks.Mixed(Faction.Abyss), seed), new Dictionary<Seat, IPlayerController>());
 
     [Fact]
     public void Two_matches_with_the_same_seed_have_the_same_checksum() =>

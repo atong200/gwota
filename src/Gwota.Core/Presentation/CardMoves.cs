@@ -39,6 +39,12 @@ public readonly record struct CardZone(ZoneKind Kind, Seat Seat, RowType? Row = 
     public static CardZone HornOf(Seat side, RowType row) => new(ZoneKind.Horn, side, row);
 
     public bool IsOnBoard => Kind is ZoneKind.Row or ZoneKind.Horn or ZoneKind.Weather;
+
+    /// <summary>True when <paramref name="viewer"/> sees each card of this zone in its own slot (the board and their hand).</summary>
+    public bool IsCardSlotFor(Seat viewer) => IsOnBoard || this == Hand(viewer);
+
+    /// <summary>False for decks and the opponent's hand, which <paramref name="viewer"/> sees face down.</summary>
+    public bool IsFaceUpFor(Seat viewer) => Kind != ZoneKind.Deck && this != Hand(viewer.Opponent());
 }
 
 public sealed record CardLocation(CardInstance Card, CardZone Zone);
@@ -59,13 +65,28 @@ public enum MoveStage
 public sealed record CardMove(CardInstance Card, CardZone From, CardZone To, MoveStage Stage);
 
 /// <summary>Every card that changed zone during one command, grouped by <see cref="MoveStage"/>.</summary>
-public sealed record MovePlan(IReadOnlyList<CardMove> Moves, bool HoldBeforePiles)
+public sealed class MovePlan
 {
+    private readonly CardMove[][] _byStage;
+
+    public MovePlan(IReadOnlyList<CardMove> moves, bool holdBeforePiles)
+    {
+        ArgumentNullException.ThrowIfNull(moves);
+        Moves = moves;
+        HoldBeforePiles = holdBeforePiles;
+        _byStage = [.. Enum.GetValues<MoveStage>().Select(stage => moves.Where(m => m.Stage == stage).ToArray())];
+    }
+
     public static MovePlan Empty { get; } = new([], false);
+
+    public IReadOnlyList<CardMove> Moves { get; }
+
+    /// <summary>True when the board should pause before cards fly to the piles (the end of a round).</summary>
+    public bool HoldBeforePiles { get; }
 
     public bool IsEmpty => Moves.Count == 0;
 
-    public IReadOnlyList<CardMove> InStage(MoveStage stage) => Moves.Where(m => m.Stage == stage).ToList();
+    public IReadOnlyList<CardMove> InStage(MoveStage stage) => _byStage[(int)stage];
 }
 
 /// <summary>

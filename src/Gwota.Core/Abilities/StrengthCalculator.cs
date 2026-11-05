@@ -2,7 +2,7 @@ namespace Gwota.Core.Abilities;
 
 /// <summary>
 /// Computes effective unit strength. Heroes are unaffected; other units apply, in order:
-/// weather → tight bond → morale boost → horn.
+/// weather → tight bond → morale boost → horn. Row-wide facts are gathered once per row, not once per unit.
 /// </summary>
 public static class StrengthCalculator
 {
@@ -20,6 +20,33 @@ public static class StrengthCalculator
         ArgumentNullException.ThrowIfNull(row);
         ArgumentNullException.ThrowIfNull(card);
 
+        var inRow = row.Cards.Any(c => c.Id == card.Id);
+        return Calculate(new RowFacts(state, row), card, inRow);
+    }
+
+    public static int RowTotal(MatchState state, BoardRow row)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(row);
+
+        var facts = new RowFacts(state, row);
+        var total = 0;
+        foreach (var card in row.Cards)
+        {
+            total += Calculate(facts, card, inRow: true);
+        }
+
+        return total;
+    }
+
+    public static int PlayerTotal(MatchState state, Seat seat)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return state.Player(seat).Rows.Sum(row => RowTotal(state, row));
+    }
+
+    private static int Calculate(in RowFacts row, CardInstance card, bool inRow)
+    {
         var definition = card.Definition;
         if (!definition.IsUnit)
         {
@@ -34,65 +61,80 @@ public static class StrengthCalculator
         var strength = definition.Strength;
         foreach (var modifier in Pipeline)
         {
-            strength = modifier.Apply(strength, state, row, card);
+            strength = modifier.Apply(strength, row, card, inRow);
         }
 
         return strength;
     }
+}
 
-    public static int RowTotal(MatchState state, BoardRow row)
+/// <summary>What every unit of a row shares when its strength is computed.</summary>
+internal readonly struct RowFacts
+{
+    public RowFacts(MatchState state, BoardRow row)
     {
-        ArgumentNullException.ThrowIfNull(row);
-        return row.Cards.Sum(card => Calculate(state, row, card));
+        Row = row;
+        IsWeatherActive = state.IsWeatherActive(row.Type);
+        foreach (var card in row.Cards)
+        {
+            MoraleBoosters += card.Definition.Has(UnitAbility.MoraleBoost) ? 1 : 0;
+            HornUnits += card.Definition.Has(UnitAbility.Horn) ? 1 : 0;
+        }
     }
 
-    public static int PlayerTotal(MatchState state, Seat seat)
+    public BoardRow Row { get; }
+
+    public bool IsWeatherActive { get; }
+
+    /// <summary>Units of the row with the morale boost ability.</summary>
+    public int MoraleBoosters { get; }
+
+    /// <summary>Units of the row with the horn ability.</summary>
+    public int HornUnits { get; }
+
+    public int CopiesOf(CardDefinition definition)
     {
-        ArgumentNullException.ThrowIfNull(state);
-        return state.Player(seat).Rows.Sum(row => RowTotal(state, row));
+        var copies = 0;
+        foreach (var card in Row.Cards)
+        {
+            copies += card.Definition.Id == definition.Id ? 1 : 0;
+        }
+
+        return copies;
     }
 }
 
+/// <summary>One step of the strength pipeline. <paramref name="inRow"/> is true when the card itself sits in the row.</summary>
 internal interface IStrengthModifier
 {
-    int Apply(int strength, MatchState state, BoardRow row, CardInstance card);
+    int Apply(int strength, in RowFacts row, CardInstance card, bool inRow);
 }
 
 internal sealed class WeatherModifier : IStrengthModifier
 {
-    public int Apply(int strength, MatchState state, BoardRow row, CardInstance card) =>
-        state.IsWeatherActive(row.Type) ? Math.Min(strength, 1) : strength;
+    public int Apply(int strength, in RowFacts row, CardInstance card, bool inRow) =>
+        row.IsWeatherActive ? Math.Min(strength, 1) : strength;
 }
 
 internal sealed class TightBondModifier : IStrengthModifier
 {
-    public int Apply(int strength, MatchState state, BoardRow row, CardInstance card)
-    {
-        if (!card.Definition.Has(UnitAbility.TightBond))
-        {
-            return strength;
-        }
-
-        var copies = row.Cards.Count(c => c.Definition.Id == card.Definition.Id);
-        return strength * copies;
-    }
+    public int Apply(int strength, in RowFacts row, CardInstance card, bool inRow) =>
+        card.Definition.Has(UnitAbility.TightBond) ? strength * row.CopiesOf(card.Definition) : strength;
 }
 
+/// <summary>Every other morale booster of the row adds one; a booster does not boost itself.</summary>
 internal sealed class MoraleBoostModifier : IStrengthModifier
 {
-    public int Apply(int strength, MatchState state, BoardRow row, CardInstance card)
-    {
-        var boosters = row.Cards.Count(c => c.Id != card.Id && c.Definition.Has(UnitAbility.MoraleBoost));
-        return strength + boosters;
-    }
+    public int Apply(int strength, in RowFacts row, CardInstance card, bool inRow) =>
+        strength + row.MoraleBoosters - (inRow && card.Definition.Has(UnitAbility.MoraleBoost) ? 1 : 0);
 }
 
+/// <summary>Doubles strength when the horn slot is filled or another unit of the row has the horn ability.</summary>
 internal sealed class HornModifier : IStrengthModifier
 {
-    public int Apply(int strength, MatchState state, BoardRow row, CardInstance card)
+    public int Apply(int strength, in RowFacts row, CardInstance card, bool inRow)
     {
-        var horned = row.HasHornSlotFilled
-            || row.Cards.Any(c => c.Id != card.Id && c.Definition.Has(UnitAbility.Horn));
-        return horned ? strength * 2 : strength;
+        var otherHornUnits = row.HornUnits - (inRow && card.Definition.Has(UnitAbility.Horn) ? 1 : 0);
+        return row.Row.HasHornSlotFilled || otherHornUnits > 0 ? strength * 2 : strength;
     }
 }

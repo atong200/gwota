@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "ogre_bruiser",
+  "name": "Ogre Bruiser",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 4,
+  "abilities": [
+    "tight_bond"
+  ],
+  "description": "Where one ogre stands, more follow."
+}

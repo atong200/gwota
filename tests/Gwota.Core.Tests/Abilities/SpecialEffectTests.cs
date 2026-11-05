@@ -114,6 +114,20 @@ public class SpecialEffectTests
     }
 
     [Fact]
+    public void Decoy_is_playable_with_a_full_hand()
+    {
+        _scenario.FillHand(Seat.One, MatchRules.Classic.MaxHandSize - 1);
+        var decoy = _scenario.AddToHand(Seat.One, TestCards.Decoy());
+        var target = _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(5));
+        var engine = _scenario.Build();
+
+        engine.Play(decoy, RowType.Melee, target.Id);
+
+        _scenario.One.Hand.Count.ShouldBe(MatchRules.Classic.MaxHandSize);
+        _scenario.One.Hand.ShouldContain(target);
+    }
+
+    [Fact]
     public void Decoy_cannot_target_heroes_specials_or_enemy_units()
     {
         var decoy = _scenario.AddToHand(Seat.One, TestCards.Decoy());
@@ -123,6 +137,20 @@ public class SpecialEffectTests
         var engine = _scenario.Build();
 
         engine.GetLegalCommands(Seat.One).OfType<PlayCardCommand>().ShouldNotContain(c => c.CardId == decoy.Id);
+    }
+
+    [Fact]
+    public void Decoy_never_targets_a_decoy_already_on_the_board()
+    {
+        var decoy = _scenario.AddToHand(Seat.One, TestCards.Decoy());
+        var boardDecoy = _scenario.AddToBoard(Seat.One, RowType.Ranged, TestCards.Decoy());
+        var unit = _scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(5));
+        var engine = _scenario.Build();
+
+        var plays = engine.GetLegalCommands(Seat.One).OfType<PlayCardCommand>().Where(c => c.CardId == decoy.Id).ToList();
+
+        plays.ShouldBe([new PlayCardCommand(Seat.One, decoy.Id, RowType.Melee, unit.Id)]);
+        engine.Apply(new PlayCardCommand(Seat.One, decoy.Id, RowType.Ranged, boardDecoy.Id)).IsSuccess.ShouldBeFalse();
     }
 
     [Fact]

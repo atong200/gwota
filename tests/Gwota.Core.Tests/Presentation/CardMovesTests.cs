@@ -158,9 +158,9 @@ public class CardMovesTests
     }
 
     [Fact]
-    public void A_unit_kept_by_the_hells_perk_does_not_move()
+    public void A_unit_kept_by_the_abyss_perk_does_not_move()
     {
-        var scenario = new Scenario(factionOne: Faction.Hells);
+        var scenario = new Scenario(factionOne: Faction.Abyss);
         var kept = scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(5));
         var engine = scenario.Build();
         engine.Pass(Seat.One);
@@ -189,5 +189,27 @@ public class CardMovesTests
         var plan = Apply(_scenario.Build(), e => e.Play(spy));
 
         plan.Moves.Select(m => m.Stage).ShouldBeInOrder();
+    }
+
+    public static TheoryData<CardZone, bool, bool> ZoneViewRules => new()
+    {
+        { CardZone.Hand(Seat.One), true, true },
+        { CardZone.Hand(Seat.Two), false, false },
+        { CardZone.Deck(Seat.One), false, false },
+        { CardZone.Deck(Seat.Two), false, false },
+        { CardZone.Discard(Seat.One), false, true },
+        { CardZone.Discard(Seat.Two), false, true },
+        { CardZone.Reveal(Seat.Two), false, true },
+        { CardZone.OnRow(Seat.Two, RowType.Ranged), true, true },
+        { CardZone.HornOf(Seat.One, RowType.Siege), true, true },
+        { CardZone.Weather(Seat.Two), true, true },
+    };
+
+    [Theory]
+    [MemberData(nameof(ZoneViewRules))]
+    public void Zones_are_slotted_and_face_up_from_the_viewer_seat(CardZone zone, bool slotted, bool faceUp)
+    {
+        zone.IsCardSlotFor(Seat.One).ShouldBe(slotted);
+        zone.IsFaceUpFor(Seat.One).ShouldBe(faceUp);
     }
 }

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "sapling",
+  "name": "Sapling",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 1,
+  "abilities": [
+    "muster"
+  ],
+  "musterGroup": "sapling"
+}

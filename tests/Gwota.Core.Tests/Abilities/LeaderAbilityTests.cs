@@ -119,6 +119,18 @@ public class LeaderAbilityTests
     public void Return_from_discard_needs_a_non_empty_discard() =>
         CanUseLeader(WithLeader(LeaderAbility.ReturnFromDiscard).Build()).ShouldBeFalse();
 
+    [Theory]
+    [InlineData(19, true)]
+    [InlineData(20, false)]
+    public void Return_from_discard_needs_room_in_hand(int handSize, bool usable)
+    {
+        var scenario = WithLeader(LeaderAbility.ReturnFromDiscard);
+        scenario.AddToDiscard(Seat.One, TestCards.Unit(3));
+        scenario.FillHand(Seat.One, handSize);
+
+        CanUseLeader(scenario.Build()).ShouldBe(usable);
+    }
+
     [Fact]
     public void Row_based_leader_without_row_is_a_programming_error()
     {
@@ -126,4 +138,111 @@ public class LeaderAbilityTests
 
         Should.Throw<InvalidOperationException>(() => engine.UseLeader(Seat.One));
     }
+
+    [Fact]
+    public void Scorch_destroys_the_strongest_non_hero_units_on_both_sides()
+    {
+        var scenario = WithLeader(LeaderAbility.Scorch);
+        var mine = scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(8));
+        var theirs = scenario.AddToBoard(Seat.Two, RowType.Siege, TestCards.Unit(8, RowType.Siege));
+        var weaker = scenario.AddToBoard(Seat.Two, RowType.Ranged, TestCards.Unit(5, RowType.Ranged));
+        var hero = scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Hero(10));
+        var engine = scenario.Build();
+
+        engine.UseLeader(Seat.One);
+
+        scenario.One.Discard.ShouldBe([mine]);
+        scenario.Two.Discard.ShouldBe([theirs]);
+        scenario.Two.Row(RowType.Ranged).Cards.ShouldBe([weaker]);
+        scenario.Two.Row(RowType.Melee).Cards.ShouldBe([hero]);
+    }
+
+    [Fact]
+    public void Scorch_is_usable_on_an_empty_board()
+    {
+        var engine = WithLeader(LeaderAbility.Scorch).Build();
+
+        CanUseLeader(engine).ShouldBeTrue();
+        engine.UseLeader(Seat.One);
+        engine.State.ActiveSeat.ShouldBe(Seat.Two);
+    }
+
+    [Fact]
+    public void Return_from_board_targets_each_own_non_hero_unit()
+    {
+        var scenario = WithLeader(LeaderAbility.ReturnFromBoard);
+        var melee = scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(4));
+        var ranged = scenario.AddToBoard(Seat.One, RowType.Ranged, TestCards.Unit(6, RowType.Ranged));
+        scenario.AddToBoard(Seat.One, RowType.Siege, TestCards.Hero(10, RowType.Siege));
+        scenario.AddToBoard(Seat.Two, RowType.Melee, TestCards.Unit(5));
+
+        var uses = scenario.Build().GetLegalCommands(Seat.One).OfType<UseLeaderCommand>();
+
+        uses.ShouldBe([new UseLeaderCommand(Seat.One, melee.Id), new UseLeaderCommand(Seat.One, ranged.Id)], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void Return_from_board_moves_the_unit_to_hand_and_ends_the_turn()
+    {
+        var scenario = WithLeader(LeaderAbility.ReturnFromBoard);
+        var unit = scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(4));
+        var engine = scenario.Build();
+
+        var events = engine.ApplyOk(new UseLeaderCommand(Seat.One, unit.Id));
+
+        scenario.One.Row(RowType.Melee).Cards.ShouldBeEmpty();
+        scenario.One.Hand.ShouldContain(unit);
+        events.OfType<CardReturnedToHand>().ShouldHaveSingleItem().Card.ShouldBe(unit);
+        engine.State.ActiveSeat.ShouldBe(Seat.Two);
+        engine.Score(Seat.One).ShouldBe(0);
+    }
+
+    [Fact]
+    public void Return_from_board_takes_an_enemy_spy_into_the_player_hand()
+    {
+        var scenario = WithLeader(LeaderAbility.ReturnFromBoard);
+        var spy = scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Spy(), owner: Seat.Two);
+        var engine = scenario.Build();
+
+        engine.ApplyOk(new UseLeaderCommand(Seat.One, spy.Id));
+
+        scenario.One.Hand.Single(c => c.Id == spy.Id).Owner.ShouldBe(Seat.One);
+    }
+
+    [Fact]
+    public void Return_from_board_is_unavailable_without_a_target_or_with_a_full_hand()
+    {
+        var scenario = WithLeader(LeaderAbility.ReturnFromBoard);
+        scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Hero(10));
+        CanUseAnyLeader(scenario.Build()).ShouldBeFalse();
+
+        scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(3));
+        CanUseAnyLeader(scenario.Build()).ShouldBeTrue();
+
+        scenario.FillHand(Seat.One, 20);
+        CanUseAnyLeader(scenario.Build()).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Return_from_board_cannot_target_a_decoy()
+    {
+        var scenario = WithLeader(LeaderAbility.ReturnFromBoard);
+        var decoy = scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Decoy());
+        var engine = scenario.Build();
+
+        CanUseAnyLeader(engine).ShouldBeFalse();
+        engine.Apply(new UseLeaderCommand(Seat.One, decoy.Id)).IsSuccess.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Return_from_board_rejects_an_untargeted_use()
+    {
+        var scenario = WithLeader(LeaderAbility.ReturnFromBoard);
+        scenario.AddToBoard(Seat.One, RowType.Melee, TestCards.Unit(3));
+
+        scenario.Build().Apply(new UseLeaderCommand(Seat.One)).IsSuccess.ShouldBeFalse();
+    }
+
+    private static bool CanUseAnyLeader(MatchEngine engine, Seat seat = Seat.One) =>
+        engine.GetLegalCommands(seat).OfType<UseLeaderCommand>().Any();
 }

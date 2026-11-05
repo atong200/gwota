@@ -4,6 +4,6 @@
   "name": "Legion Commander",
   "faction": "realms",
   "ability": "horn_row",
-  "row": "siege",
-  "description": "Press the Attack: doubles your siege row."
+  "row": "melee",
+  "abilityName": "Press the Attack"
 }

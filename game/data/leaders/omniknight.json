@@ -1,0 +1,8 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "omniknight",
+  "name": "Omniknight",
+  "faction": "realms",
+  "ability": "clear_weather",
+  "abilityName": "Repel"
+}

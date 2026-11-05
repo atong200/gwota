@@ -23,7 +23,7 @@ public class DeckLoadResultTests
     public void Saved_decks_are_loaded()
     {
         var saved = DeckCollection.FromDefaults(Data);
-        saved.Save(saved.Create(Faction.Hells, Data));
+        saved.Save(saved.Create(Faction.Abyss, Data));
 
         var result = DeckLoadResult.From(DeckCollectionSerializer.Serialize(saved), Data);
 

@@ -1,0 +1,14 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "radiant_creep",
+  "name": "Radiant Creep",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 2,
+  "abilities": [
+    "tight_bond"
+  ]
+}

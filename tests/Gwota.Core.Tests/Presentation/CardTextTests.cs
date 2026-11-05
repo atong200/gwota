@@ -13,6 +13,11 @@ public class CardTextTests
         }
     }
 
+    [Theory]
+    [InlineData(1, "Concord: both players draw 1 card.")]
+    [InlineData(2, "Concord: both players draw 2 cards.")]
+    public void Concord_text_shows_the_draw_count(int draw, string expected) =>
+        CardText.Rules(TestCards.Concord(draw)).Select(line => line.Plain).ShouldBe([expected]);
     [Fact]
     public void Every_special_effect_has_rules_text()
     {
@@ -38,6 +43,23 @@ public class CardTextTests
     [Fact]
     public void Row_leaders_name_their_row() =>
         CardText.Leader(TestCards.Leader(LeaderAbility.HornRow, RowType.Siege)).ShouldBe("Double your siege row.");
+
+    [Theory]
+    [InlineData(LeaderAbility.Scorch, "Destroy the strongest non-hero unit(s) on the battlefield.")]
+    [InlineData(LeaderAbility.ReturnFromBoard, "Return one of your non-hero units from the board to your hand.")]
+    public void Rowless_leaders_describe_their_ability(LeaderAbility ability, string expected) =>
+        CardText.Leader(TestCards.Leader(ability)).ShouldBe(expected);
+
+    [Fact]
+    public void Leader_line_prefixes_the_rules_with_the_ability_name()
+    {
+        var leader = TestCards.Leader(LeaderAbility.ClearWeather) with { AbilityName = "Illuminate" };
+
+        var line = CardText.LeaderLine(leader);
+
+        line.Keyword.ShouldBe("Illuminate");
+        line.Plain.ShouldBe("Illuminate: Clear all weather effects.");
+    }
 
     [Fact]
     public void Unit_description_lists_type_hero_abilities_and_flavor()

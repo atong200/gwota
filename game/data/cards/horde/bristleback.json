@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "bristleback",
+  "name": "Bristleback",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 6,
+  "description": "Rigwarl. Quill Spray."
+}

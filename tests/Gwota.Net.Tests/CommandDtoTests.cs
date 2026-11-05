@@ -9,6 +9,7 @@ public class CommandDtoTests
         new PlayCardCommand(Seat.One, 12),
         new PlayCardCommand(Seat.Two, 12, RowType.Ranged, 30),
         new UseLeaderCommand(Seat.One),
+        new UseLeaderCommand(Seat.Two, 21),
         new ResolveChoiceCommand(Seat.Two, 5),
         new PassCommand(Seat.One),
         new ForfeitCommand(Seat.Two),

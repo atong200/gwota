@@ -26,6 +26,8 @@ public sealed class DeckEditor
     private readonly GameData _data;
     private readonly Dictionary<string, int> _counts = new(StringComparer.Ordinal);
     private readonly List<string> _order = [];
+    private IReadOnlyList<DeckLine>? _lines;
+    private DeckStats? _stats;
 
     public DeckEditor(DeckDefinition deck, GameData data, DeckRules? rules = null)
     {
@@ -37,6 +39,7 @@ public sealed class DeckEditor
         Id = deck.Id;
         Name = deck.Name;
         Faction = deck.Faction;
+        CardBackId = CardBacks.Normalize(deck.CardBackId);
         Leader = data.Leaders.TryGetValue(deck.LeaderId, out var leader) && leader.Faction == deck.Faction
             ? leader
             : DefaultLeader(data, deck.Faction);
@@ -63,6 +66,8 @@ public sealed class DeckEditor
 
     public LeaderDefinition Leader { get; private set; }
 
+    public string CardBackId { get; private set; }
+
     /// <summary>Leaders the deck may use (its faction's), ordered by name.</summary>
     public IReadOnlyList<LeaderDefinition> Leaders { get; }
 
@@ -73,10 +78,11 @@ public sealed class DeckEditor
         Faction = Faction,
         LeaderId = Leader.Id,
         Cards = _order.Select(id => new DeckEntry(id, _counts[id])).ToList(),
+        CardBackId = CardBackId,
     };
 
     /// <summary>Cards in the deck grouped by row (melee, ranged, siege, specials); heroes then strongest first within a group.</summary>
-    public IReadOnlyList<DeckLine> Lines => _order
+    public IReadOnlyList<DeckLine> Lines => _lines ??= _order
         .Select(id => new DeckLine(_data.Cards[id], _counts[id]))
         .OrderBy(l => l.Group)
         .ThenByDescending(l => l.Card.IsHero)
@@ -84,28 +90,7 @@ public sealed class DeckEditor
         .ThenBy(l => l.Card.Name, StringComparer.OrdinalIgnoreCase)
         .ToList();
 
-    public DeckStats Stats
-    {
-        get
-        {
-            int units = 0, specials = 0, heroes = 0, strength = 0;
-            foreach (var line in Lines)
-            {
-                if (line.Card.IsUnit)
-                {
-                    units += line.Count;
-                    strength += line.Card.Strength * line.Count;
-                    heroes += line.Card.IsHero ? line.Count : 0;
-                }
-                else
-                {
-                    specials += line.Count;
-                }
-            }
-
-            return new DeckStats(units, specials, heroes, strength);
-        }
-    }
+    public DeckStats Stats => _stats ??= ComputeStats();
 
     /// <summary>Every rule the deck currently breaks; empty when it can be played.</summary>
     public IReadOnlyList<string> Problems => DeckValidator.Validate(Deck, _data.Cards, _data.Leaders, Rules);
@@ -151,6 +136,7 @@ public sealed class DeckEditor
         }
 
         _counts[cardId] = CountOf(cardId) + 1;
+        CardsChanged();
         return true;
     }
 
@@ -172,6 +158,7 @@ public sealed class DeckEditor
             _order.Remove(cardId);
         }
 
+        CardsChanged();
         return true;
     }
 
@@ -195,6 +182,18 @@ public sealed class DeckEditor
         }
 
         Leader = leader;
+        return true;
+    }
+
+    /// <summary>Changes the card back; blank ids are refused. Which backs exist is up to the art folder.</summary>
+    public bool SetCardBack(string? cardBackId)
+    {
+        if (string.IsNullOrWhiteSpace(cardBackId))
+        {
+            return false;
+        }
+
+        CardBackId = cardBackId.Trim();
         return true;
     }
 
@@ -228,4 +227,31 @@ public sealed class DeckEditor
     /// <summary>The leader a new deck starts with: the first of its faction by name.</summary>
     public static LeaderDefinition DefaultLeader(GameData data, Faction faction) =>
         LeadersFor(data, faction) is [var first, ..] ? first : throw new InvalidOperationException($"No leader belongs to {FactionInfo.Name(faction)}.");
+
+    private void CardsChanged()
+    {
+        _lines = null;
+        _stats = null;
+    }
+
+    private DeckStats ComputeStats()
+    {
+        int units = 0, specials = 0, heroes = 0, strength = 0;
+        foreach (var (id, count) in _counts)
+        {
+            var card = _data.Cards[id];
+            if (card.IsUnit)
+            {
+                units += count;
+                strength += card.Strength * count;
+                heroes += card.IsHero ? count : 0;
+            }
+            else
+            {
+                specials += count;
+            }
+        }
+
+        return new DeckStats(units, specials, heroes, strength);
+    }
 }

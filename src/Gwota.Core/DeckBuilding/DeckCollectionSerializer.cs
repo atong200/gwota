@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Gwota.Core.Data;
+using Gwota.Core.Session;
 
 namespace Gwota.Core.DeckBuilding;
 
@@ -9,7 +10,9 @@ namespace Gwota.Core.DeckBuilding;
 /// </summary>
 public static class DeckCollectionSerializer
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
+
+    private static readonly Faction[] AddedInVersion3 = [Faction.Horde];
 
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
@@ -32,6 +35,7 @@ public static class DeckCollectionSerializer
                 Faction = d.Faction.ToString().ToLowerInvariant(),
                 Leader = d.LeaderId,
                 Cards = d.Cards.ToDictionary(e => e.CardId, e => e.Count, StringComparer.Ordinal),
+                CardBack = d.CardBackId,
             }).ToList(),
         };
         return JsonSerializer.Serialize(file, Options);
@@ -55,22 +59,56 @@ public static class DeckCollectionSerializer
             return null;
         }
 
-        var legacy = file is not null && file.Version < CurrentVersion;
-        var decks = (file?.Decks ?? []).Select(d => Sanitize(legacy ? Migrate(d) : d, data, rules ?? DeckRules.Classic)).OfType<DeckDefinition>().ToList();
+        var version = file?.Version ?? CurrentVersion;
+        var decks = (file?.Decks ?? []).Select(d => Sanitize(Migrate(d, version), data, rules ?? DeckRules.Classic)).OfType<DeckDefinition>().ToList();
+        if (decks.Count == 0)
+        {
+            return null;
+        }
+
         var collection = new DeckCollection(decks);
-        return collection.Count == 0 ? null : collection;
+        if (version < 3)
+        {
+            AddMissingFactions(collection, data);
+        }
+
+        return collection;
     }
 
-    private static DeckDto? Migrate(DeckDto? dto) => dto is null ? null : new DeckDto
+    private static DeckDto? Migrate(DeckDto? dto, int version)
     {
-        Id = dto.Id,
-        Name = dto.Name,
-        Faction = dto.Faction is { } faction ? LegacyIds.Factions.GetValueOrDefault(faction.ToLowerInvariant(), faction) : null,
-        Leader = dto.Leader is { } leader ? LegacyIds.Leaders.GetValueOrDefault(leader, leader) : null,
-        Cards = dto.Cards?
-            .GroupBy(e => LegacyIds.Cards.GetValueOrDefault(e.Key, e.Key), StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.Sum(e => e.Value), StringComparer.Ordinal),
-    };
+        if (dto is null || version >= CurrentVersion)
+        {
+            return dto;
+        }
+
+        var renameIds = version < 2;
+        return new DeckDto
+        {
+            Id = dto.Id,
+            Name = dto.Name,
+            Faction = dto.Faction is { } faction ? LegacyIds.Factions.GetValueOrDefault(faction.ToLowerInvariant(), faction) : null,
+            Leader = dto.Leader is { } leader && renameIds ? LegacyIds.Leaders.GetValueOrDefault(leader, leader) : dto.Leader,
+            Cards = renameIds
+                ? dto.Cards?
+                    .GroupBy(e => LegacyIds.Cards.GetValueOrDefault(e.Key, e.Key), StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.Sum(e => e.Value), StringComparer.Ordinal)
+                : dto.Cards,
+            CardBack = dto.CardBack,
+        };
+    }
+
+    /// <summary>Gives older saves the shipped decks of factions added in version 3.</summary>
+    private static void AddMissingFactions(DeckCollection collection, GameData data)
+    {
+        var owned = collection.Decks.Select(d => d.Faction).ToHashSet();
+        foreach (var deck in MatchFactory.PlayableDecks(data)
+                     .Where(d => AddedInVersion3.Contains(d.Faction) && !owned.Contains(d.Faction) && collection.Find(d.Id) is null))
+        {
+            collection.Save(deck);
+            owned.Add(deck.Faction);
+        }
+    }
 
     private static DeckDefinition? Sanitize(DeckDto? dto, GameData data, DeckRules rules)
     {
@@ -103,6 +141,7 @@ public static class DeckCollectionSerializer
             Faction = faction,
             LeaderId = leaderId,
             Cards = cards,
+            CardBackId = CardBacks.Normalize(dto.CardBack),
         };
     }
 
@@ -124,5 +163,7 @@ public static class DeckCollectionSerializer
         public string? Leader { get; set; }
 
         public Dictionary<string, int>? Cards { get; set; }
+
+        public string? CardBack { get; set; }
     }
 }

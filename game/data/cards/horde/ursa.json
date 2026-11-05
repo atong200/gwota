@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "ursa",
+  "name": "Ursa",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 8,
+  "description": "Ulfsaar, Fighter of the Ursine clans. Enrage."
+}

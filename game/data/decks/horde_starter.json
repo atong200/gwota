@@ -1,0 +1,32 @@
+{
+  "$schema": "../schema/deck.schema.json",
+  "id": "horde_starter",
+  "name": "Red Mist Warband",
+  "faction": "horde",
+  "leader": "sorla_khan",
+  "cards": {
+    "axe": 1,
+    "disruptor": 1,
+    "roshan": 1,
+    "ursa": 1,
+    "huskar": 1,
+    "bristleback": 1,
+    "troll_warlord": 1,
+    "ogre_magi": 1,
+    "centaur_warrunner": 1,
+    "batrider": 1,
+    "bloodseeker": 2,
+    "witch_doctor": 1,
+    "ogre_bruiser": 3,
+    "magnus": 1,
+    "red_mist_berserker": 3,
+    "red_mist_marauder": 2,
+    "drum_of_endurance": 1,
+    "laguna_blade": 1,
+    "manta_style": 2,
+    "freezing_field": 1,
+    "smoke_of_deceit": 1,
+    "ravage": 1,
+    "sunstrike": 1
+  }
+}

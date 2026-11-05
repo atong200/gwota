@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "batrider",
+  "name": "Batrider",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "ranged"
+  ],
+  "strength": 5,
+  "description": "Firefly."
+}

@@ -32,7 +32,13 @@ public sealed class MatchEngine
         foreach (var (seat, setup) in new[] { (Seat.One, one), (Seat.Two, two) })
         {
             var deck = state.Player(seat).DeckList;
-            deck.AddRange(setup.Deck.Select(definition => new CardInstance(state.NextInstanceId++, definition, seat)));
+            var copies = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var definition in setup.Deck)
+            {
+                var copy = copies.GetValueOrDefault(definition.Id);
+                copies[definition.Id] = copy + 1;
+                deck.Add(new CardInstance(state.NextInstanceId++, definition, seat) { Copy = copy });
+            }
             random.Shuffle(deck);
         }
 
@@ -62,6 +68,8 @@ public sealed class MatchEngine
 
     public IReadOnlyList<GameCommand> GetLegalCommands(Seat seat) => LegalCommands.For(State, seat);
 
+    public bool IsLegal(GameCommand command) => LegalCommands.IsLegal(State, command);
+
     public CommandResult Apply(GameCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -71,11 +79,19 @@ public sealed class MatchEngine
             return Forfeit(forfeit.Seat);
         }
 
-        if (!GetLegalCommands(command.Seat).Contains(command))
-        {
-            return CommandResult.Fail($"{command} is not legal in the current state.");
-        }
+        return IsLegal(command)
+            ? CommandResult.Ok(Execute(command))
+            : CommandResult.Fail($"{command} is not legal in the current state.");
+    }
 
+    /// <summary>
+    /// Applies a command already known to be legal (taken from <see cref="GetLegalCommands"/> for this exact state),
+    /// skipping the legality check. Used by AI simulations.
+    /// </summary>
+    internal IReadOnlyList<GameEvent> ApplyLegal(GameCommand command) => Execute(command);
+
+    private IReadOnlyList<GameEvent> Execute(GameCommand command)
+    {
         switch (command)
         {
             case FinishDraftCommand draft:
@@ -85,7 +101,7 @@ public sealed class MatchEngine
                 PlayCard(play);
                 break;
             case UseLeaderCommand leader:
-                UseLeader(leader.Seat);
+                UseLeader(leader);
                 break;
             case ResolveChoiceCommand resolve:
                 ResolveChoice(resolve);
@@ -94,16 +110,17 @@ public sealed class MatchEngine
                 Pass(pass.Seat);
                 break;
             default:
-                return CommandResult.Fail($"Unsupported command {command.GetType().Name}.");
+                throw new InvalidOperationException($"Unsupported command {command.GetType().Name}.");
         }
 
-        return CommandResult.Ok(_context.TakeEvents());
+        return _context.TakeEvents();
     }
 
     private static PlayerState CreatePlayer(Seat seat, PlayerSetup setup, MatchRules rules) =>
         new(seat, setup.Name, setup.Faction, setup.Leader, rules.StartingGems)
         {
             RedrawLimit = rules.MaxRedraws,
+            HandLimit = rules.MaxHandSize,
         };
 
     /// <summary>
@@ -147,40 +164,37 @@ public sealed class MatchEngine
 
     private void PlayCard(PlayCardCommand command)
     {
-        var player = State.Player(command.Seat);
-        var card = player.HandList.First(c => c.Id == command.CardId);
-        player.HandList.Remove(card);
-
-        if (card.Definition.IsUnit)
+        var card = _context.TakeFromHand(command.Seat, command.CardId);
+        var definition = card.Definition;
+        if (definition.IsUnit)
         {
-            _context.PlayUnit(command.Seat, card, command.Row!.Value);
+            _context.PlayUnit(command.Seat, card, SpecialEffects.RequireRow(command));
         }
         else
         {
-            SpecialEffects.Get(card.Definition.Effect!.Value).Resolve(_context, command, card);
+            var effect = definition.Effect ?? throw new InvalidOperationException($"Special card '{definition.Id}' has no effect.");
+            SpecialEffects.Get(effect).Resolve(_context, command, card);
         }
 
         EndAction(command.Seat);
     }
 
-    private void UseLeader(Seat seat)
+    private void UseLeader(UseLeaderCommand command)
     {
+        var seat = command.Seat;
         var player = State.Player(seat);
         player.LeaderUsed = true;
         _context.Emit(new LeaderUsed(seat, player.Leader));
-        LeaderAbilities.Get(player.Leader.Ability).Use(_context, seat, player.Leader);
+        LeaderAbilities.Get(player.Leader.Ability).Use(_context, command, player.Leader);
         EndAction(seat);
     }
 
     private void ResolveChoice(ResolveChoiceCommand command)
     {
-        var choice = State.PendingChoice!;
+        var choice = State.PendingChoice ?? throw new InvalidOperationException("No choice is pending.");
         State.PendingChoice = null;
 
-        var player = State.Player(command.Seat);
-        var card = player.DiscardList.First(c => c.Id == command.CardId);
-        player.DiscardList.Remove(card);
-
+        var card = _context.TakeFromDiscard(command.Seat, command.CardId);
         switch (choice.Kind)
         {
             case ChoiceKind.MedicRevive:
@@ -188,8 +202,7 @@ public sealed class MatchEngine
                 _context.PlayUnit(command.Seat, card, card.Definition.Rows[0]);
                 break;
             case ChoiceKind.ReturnFromDiscard:
-                player.HandList.Add(card);
-                _context.Emit(new CardReturnedToHand(command.Seat, card));
+                _context.ReturnToHand(command.Seat, card);
                 break;
             default:
                 throw new InvalidOperationException($"Unknown choice kind {choice.Kind}.");
@@ -225,9 +238,9 @@ public sealed class MatchEngine
         {
             BeginTurn(actor);
         }
-        else
+        else if (RoundResolver.EndRound(_context) is { } nextStarter)
         {
-            EndRound();
+            StartRound(nextStarter);
         }
     }
 
@@ -256,85 +269,6 @@ public sealed class MatchEngine
         BeginTurn(starter);
     }
 
-    private void EndRound()
-    {
-        var scoreOne = Score(Seat.One);
-        var scoreTwo = Score(Seat.Two);
-        Seat? winner = scoreOne > scoreTwo ? Seat.One : scoreTwo > scoreOne ? Seat.Two : null;
-
-        if (winner is { } roundWinner)
-        {
-            State.Player(roundWinner.Opponent()).Gems--;
-        }
-        else
-        {
-            State.Player(Seat.One).Gems--;
-            State.Player(Seat.Two).Gems--;
-        }
-
-        var result = new RoundResult(State.Round, scoreOne, scoreTwo, winner);
-        State.RoundResultList.Add(result);
-        _context.Emit(new RoundEnded(result));
-
-        var matchOver = State.Players.Any(p => p.Gems <= 0);
-        HashSet<int> kept = matchOver ? [] : SelectUnitsToKeep();
-        ClearBoard(kept);
-
-        if (matchOver)
-        {
-            FinishMatch();
-            return;
-        }
-
-        foreach (var player in State.Players)
-        {
-            FactionPerks.Find(player.Faction)?.OnRoundEnded(_context, player.Seat, result);
-        }
-
-        State.Round++;
-        StartRound(NextStarter(result));
-    }
-
-    private HashSet<int> SelectUnitsToKeep()
-    {
-        var kept = new HashSet<int>();
-        foreach (var player in State.Players)
-        {
-            var perk = FactionPerks.Find(player.Faction);
-            if (perk is not null)
-            {
-                kept.UnionWith(perk.SelectUnitsToKeep(_context, player.Seat).Select(c => c.Id));
-            }
-        }
-
-        return kept;
-    }
-
-    private void ClearBoard(HashSet<int> keptIds)
-    {
-        foreach (var player in State.Players)
-        {
-            foreach (var row in player.Rows)
-            {
-                foreach (var card in row.CardList.Where(c => !keptIds.Contains(c.Id)).ToList())
-                {
-                    row.CardList.Remove(card);
-                    _context.Discard(card);
-                }
-
-                if (row.HornCard is { } horn)
-                {
-                    _context.Discard(horn);
-                    row.HornCard = null;
-                }
-
-                row.HasLeaderHorn = false;
-            }
-        }
-
-        _context.ClearWeather();
-    }
-
     private CommandResult Forfeit(Seat seat)
     {
         if (IsFinished)
@@ -348,23 +282,5 @@ public sealed class MatchEngine
         State.Phase = MatchPhase.Finished;
         _context.Emit(new MatchEnded(State.Outcome));
         return CommandResult.Ok(_context.TakeEvents());
-    }
-
-    private void FinishMatch()
-    {
-        var alive = State.Players.Where(p => p.Gems > 0).ToList();
-        State.Outcome = new MatchOutcome(alive.Count == 1 ? alive[0].Seat : null);
-        State.Phase = MatchPhase.Finished;
-        _context.Emit(new MatchEnded(State.Outcome));
-    }
-
-    private Seat NextStarter(RoundResult result)
-    {
-        if (result.Winner is not { } winner)
-        {
-            return State.RoundStarter.Opponent();
-        }
-
-        return Rules.NextRoundStarter == NextRoundStarter.RoundWinner ? winner : winner.Opponent();
     }
 }

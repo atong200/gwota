@@ -1,8 +1,9 @@
 namespace Gwota.Core.Match;
 
 /// <summary>
-/// Enumerates every legal command for a seat. This is the single source of truth for legality:
-/// the engine rejects anything not listed here, the UI highlights from it and the AI picks from it.
+/// Enumerates every legal command for a seat. This is the single source of truth for legality: the UI highlights
+/// from it and the AI picks from it; the engine validates with <see cref="IsLegal"/>, which tests keep equal to
+/// <c>For(...).Contains</c>.
 /// </summary>
 public static class LegalCommands
 {
@@ -13,14 +14,91 @@ public static class LegalCommands
         return state.Phase switch
         {
             MatchPhase.Draft => DraftCommands(state.Player(seat)),
-            MatchPhase.Playing => PlayingCommands(state, seat),
+            MatchPhase.Playing => PlayingCommands(state, seat).ToList(),
             _ => [],
         };
     }
 
-    /// <summary>True when the seat could do something other than passing.</summary>
-    public static bool HasActionBesidesPass(MatchState state, Seat seat) =>
-        For(state, seat).Any(c => c is not PassCommand);
+    /// <summary>True when the seat could do something other than passing. Stops at the first such command.</summary>
+    public static bool HasActionBesidesPass(MatchState state, Seat seat)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return state.Phase == MatchPhase.Playing && PlayingCommands(state, seat).Any(c => c is not PassCommand);
+    }
+
+    /// <summary>
+    /// Same answer as <c>For(state, command.Seat).Contains(command)</c>, without enumerating every legal command.
+    /// </summary>
+    public static bool IsLegal(MatchState state, GameCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var seat = command.Seat;
+        var player = state.Player(seat);
+        if (state.Phase == MatchPhase.Draft)
+        {
+            return command is FinishDraftCommand draft && IsLegalDraft(player, draft);
+        }
+
+        if (state.Phase != MatchPhase.Playing)
+        {
+            return false;
+        }
+
+        if (state.PendingChoice is { } choice)
+        {
+            return command is ResolveChoiceCommand resolve && choice.Seat == seat && choice.Options.Contains(resolve.CardId);
+        }
+
+        if (state.ActiveSeat != seat || player.HasPassed)
+        {
+            return false;
+        }
+
+        return command switch
+        {
+            PassCommand => true,
+            PlayCardCommand play => player.FindInHand(play.CardId) is { } card
+                && PlaysFor(state, seat, card).Contains(play),
+            UseLeaderCommand use => !player.LeaderUsed
+                && LeaderAbilities.Get(player.Leader.Ability).LegalUses(state, seat, player.Leader).Contains(use),
+            _ => false,
+        };
+    }
+
+    private static bool IsLegalDraft(PlayerState player, FinishDraftCommand draft)
+    {
+        if (player.HasFinishedDraft)
+        {
+            return false;
+        }
+
+        var ids = draft.RedrawnCardIds;
+        var maxRedraws = Math.Min(player.RedrawLimit, Math.Min(player.Deck.Count, player.Hand.Count));
+        if (ids.Count > maxRedraws)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < ids.Count; i++)
+        {
+            if (player.FindInHand(ids[i]) is null)
+            {
+                return false;
+            }
+
+            for (var j = 0; j < i; j++)
+            {
+                if (ids[j] == ids[i])
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 
     /// <summary>One command per selection of at most <see cref="PlayerState.RedrawLimit"/> hand cards (bounded by the deck size).</summary>
     private static List<GameCommand> DraftCommands(PlayerState player)
@@ -55,34 +133,45 @@ public static class LegalCommands
         }
     }
 
-    private static List<GameCommand> PlayingCommands(MatchState state, Seat seat)
+    /// <summary>Lazy, so callers looking for a single command stop early. Enumerate before mutating the state.</summary>
+    private static IEnumerable<GameCommand> PlayingCommands(MatchState state, Seat seat)
     {
         if (state.PendingChoice is { } choice)
         {
-            return choice.Seat == seat
-                ? choice.Options.Select(id => (GameCommand)new ResolveChoiceCommand(seat, id)).ToList()
-                : [];
+            if (choice.Seat == seat)
+            {
+                foreach (var id in choice.Options)
+                {
+                    yield return new ResolveChoiceCommand(seat, id);
+                }
+            }
+
+            yield break;
         }
 
         var player = state.Player(seat);
         if (state.ActiveSeat != seat || player.HasPassed)
         {
-            return [];
+            yield break;
         }
 
-        var commands = new List<GameCommand>();
         foreach (var card in player.Hand)
         {
-            commands.AddRange(PlaysFor(state, seat, card));
+            foreach (var play in PlaysFor(state, seat, card))
+            {
+                yield return play;
+            }
         }
 
-        if (!player.LeaderUsed && LeaderAbilities.Get(player.Leader.Ability).CanUse(state, seat, player.Leader))
+        if (!player.LeaderUsed)
         {
-            commands.Add(new UseLeaderCommand(seat));
+            foreach (var use in LeaderAbilities.Get(player.Leader.Ability).LegalUses(state, seat, player.Leader))
+            {
+                yield return use;
+            }
         }
 
-        commands.Add(new PassCommand(seat));
-        return commands;
+        yield return new PassCommand(seat);
     }
 
     private static IEnumerable<PlayCardCommand> PlaysFor(MatchState state, Seat seat, CardInstance card)

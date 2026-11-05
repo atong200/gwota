@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "luna",
+  "name": "Luna",
+  "faction": "realms",
+  "ability": "horn_row",
+  "row": "ranged",
+  "abilityName": "Lunar Blessing"
+}

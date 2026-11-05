@@ -30,6 +30,8 @@ internal sealed class CardDto
 
     public string? MusterGroup { get; set; }
 
+    public int? Concord { get; set; }
+
     public string? Description { get; set; }
 }
 
@@ -48,7 +50,7 @@ internal sealed class LeaderDto
 
     public RowType? Row { get; set; }
 
-    public string? Description { get; set; }
+    public string? AbilityName { get; set; }
 }
 
 internal sealed class DeckDto

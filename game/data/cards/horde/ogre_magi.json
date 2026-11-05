@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "ogre_magi",
+  "name": "Ogre Magi",
+  "faction": "horde",
+  "kind": "unit",
+  "rows": [
+    "siege"
+  ],
+  "strength": 6,
+  "description": "Aggron Stonebreak. Multicast."
+}

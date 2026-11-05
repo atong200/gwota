@@ -14,6 +14,23 @@ public class MatchFactoryTests
         MatchFactory.PlayableDecks(Shipped).Select(d => d.Faction).ShouldBeInOrder();
 
     [Fact]
+    public void Each_seat_shows_the_card_back_of_its_deck()
+    {
+        var setup = new MatchSetup(Deck("realms_starter") with { CardBackId = "aegis" }, Deck("abyss_starter") with { CardBackId = "" }, 1);
+
+        setup.CardBackFor(Seat.One).ShouldBe(new CardBackStyle("aegis", Faction.Realms));
+        setup.CardBackFor(Seat.Two).ShouldBe(new CardBackStyle(CardBacks.DefaultId, Faction.Abyss));
+    }
+
+    [Fact]
+    public void Card_back_style_trims_the_id_and_keeps_the_deck_faction() =>
+        CardBackStyle.Of(Deck("abyss_starter") with { CardBackId = "  red_mist " }).ShouldBe(new CardBackStyle("red_mist", Faction.Abyss));
+
+    [Fact]
+    public void Shipped_decks_use_the_default_card_back() =>
+        MatchFactory.PlayableDecks(Shipped).ShouldAllBe(d => d.CardBackId == CardBacks.DefaultId);
+
+    [Fact]
     public void Opponent_comes_from_another_faction()
     {
         for (ulong seed = 1; seed <= 20; seed++)
@@ -36,7 +53,7 @@ public class MatchFactoryTests
     {
         var built = Deck("realms_starter") with { Id = "deck_7", Name = "My deck" };
 
-        var session = MatchFactory.VersusAi(Shipped, new MatchSetup(built, Deck("hells_starter"), 3, "Tong", "BOT Gabe"));
+        var session = MatchFactory.VersusAi(Shipped, new MatchSetup(built, Deck("abyss_starter"), 3, "Tong", "BOT Gabe"));
 
         session.State.Player(MatchFactory.HumanSeat).Faction.ShouldBe(Faction.Realms);
     }
@@ -44,19 +61,19 @@ public class MatchFactoryTests
     [Fact]
     public void Versus_ai_puts_the_human_in_seat_one_and_the_ai_in_seat_two()
     {
-        var session = MatchFactory.VersusAi(Shipped, new MatchSetup(Deck("realms_starter"), Deck("hells_starter"), 3, "Tong", "BOT Gabe"));
+        var session = MatchFactory.VersusAi(Shipped, new MatchSetup(Deck("realms_starter"), Deck("abyss_starter"), 3, "Tong", "BOT Gabe"));
 
         session.IsControlled(MatchFactory.HumanSeat).ShouldBeFalse();
         session.IsControlled(MatchFactory.AiSeat).ShouldBeTrue();
         session.State.Player(Seat.One).Name.ShouldBe("Tong");
         session.State.Player(Seat.Two).Name.ShouldBe("BOT Gabe");
-        session.State.Player(Seat.Two).Leader.Id.ShouldBe(Deck("hells_starter").LeaderId);
+        session.State.Player(Seat.Two).Leader.Id.ShouldBe(Deck("abyss_starter").LeaderId);
     }
 
     [Fact]
     public void Names_do_not_depend_on_factions()
     {
-        var session = MatchFactory.VersusAi(Shipped, new MatchSetup(Deck("hells_starter"), Deck("hells_starter"), 3));
+        var session = MatchFactory.VersusAi(Shipped, new MatchSetup(Deck("abyss_starter"), Deck("abyss_starter"), 3));
 
         session.State.Player(Seat.One).Name.ShouldBe(MatchSetup.DefaultPlayerName);
         session.State.Player(Seat.Two).Name.ShouldBe(MatchSetup.DefaultOpponentName);
@@ -88,7 +105,7 @@ public class MatchFactoryTests
     {
         for (ulong seed = 1; seed <= 30; seed++)
         {
-            var setup = MatchFactory.AiVersusAiSetup(Deck("realms_starter"), Deck("hells_starter"), new SeededRandom(seed), seed);
+            var setup = MatchFactory.AiVersusAiSetup(Deck("realms_starter"), Deck("abyss_starter"), new SeededRandom(seed), seed);
 
             setup.PlayerName.ShouldStartWith(BotNames.Prefix);
             setup.OpponentName.ShouldStartWith(BotNames.Prefix);
@@ -99,7 +116,7 @@ public class MatchFactoryTests
     [Fact]
     public void A_rematch_keeps_the_same_names()
     {
-        var setup = new MatchSetup(Deck("realms_starter"), Deck("hells_starter"), 3, "Tong", "BOT Gabe");
+        var setup = new MatchSetup(Deck("realms_starter"), Deck("abyss_starter"), 3, "Tong", "BOT Gabe");
 
         var rematch = MatchFactory.VersusAi(Shipped, setup with { Seed = setup.Seed + 1 });
 
@@ -109,7 +126,7 @@ public class MatchFactoryTests
     [Fact]
     public void Same_setup_produces_the_same_match()
     {
-        var setup = new MatchSetup(Deck("realms_starter"), Deck("hells_starter"), 42);
+        var setup = new MatchSetup(Deck("realms_starter"), Deck("abyss_starter"), 42);
 
         var first = MatchFactory.VersusAi(Shipped, setup).State.Player(Seat.One).Hand.Select(c => c.Definition.Id);
         var second = MatchFactory.VersusAi(Shipped, setup).State.Player(Seat.One).Hand.Select(c => c.Definition.Id);
@@ -120,7 +137,7 @@ public class MatchFactoryTests
     [Fact]
     public void Ai_versus_ai_sessions_finish()
     {
-        var session = MatchFactory.AiVersusAi(Shipped, new MatchSetup(Deck("realms_starter"), Deck("hells_starter"), 5));
+        var session = MatchFactory.AiVersusAi(Shipped, new MatchSetup(Deck("realms_starter"), Deck("abyss_starter"), 5));
 
         session.RunControllers();
 
@@ -130,7 +147,7 @@ public class MatchFactoryTests
     [Fact]
     public void Versus_player_has_no_controllers_and_seats_the_player_deck_first()
     {
-        var session = MatchFactory.VersusPlayer(Shipped, new MatchSetup(Deck("realms_starter"), Deck("hells_starter"), 3, "Alice", "Bob"));
+        var session = MatchFactory.VersusPlayer(Shipped, new MatchSetup(Deck("realms_starter"), Deck("abyss_starter"), 3, "Alice", "Bob"));
 
         session.IsControlled(Seat.One).ShouldBeFalse();
         session.IsControlled(Seat.Two).ShouldBeFalse();
@@ -141,7 +158,7 @@ public class MatchFactoryTests
     [Fact]
     public void Versus_player_is_deterministic_for_a_seed()
     {
-        var setup = new MatchSetup(Deck("realms_starter"), Deck("hells_starter"), 11, "Alice", "Bob");
+        var setup = new MatchSetup(Deck("realms_starter"), Deck("abyss_starter"), 11, "Alice", "Bob");
 
         MatchFactory.VersusPlayer(Shipped, setup).Checksum().ShouldBe(MatchFactory.VersusPlayer(Shipped, setup).Checksum());
     }

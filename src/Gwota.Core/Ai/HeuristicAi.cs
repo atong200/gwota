@@ -65,7 +65,7 @@ public sealed class HeuristicAi(HeuristicAiOptions? options = null) : IPlayerCon
 
     private GameCommand DecideAgainstPassedOpponent(MatchEngine engine, Seat seat, List<GameCommand> plays, PassCommand pass)
     {
-        if (Lead(engine, seat) > 0)
+        if (Outcome(engine, seat) > 0)
         {
             return pass;
         }
@@ -74,7 +74,7 @@ public sealed class HeuristicAi(HeuristicAiOptions? options = null) : IPlayerCon
         // so stronger cards are saved for later rounds.
         var winning = plays
             .Select(command => Simulate(engine, seat, command))
-            .Where(s => s.Lead > 0)
+            .Where(s => s.Outcome > 0)
             .OrderByDescending(s => s.Evaluation - s.Lead)
             .ThenBy(s => s.Lead)
             .FirstOrDefault();
@@ -92,19 +92,19 @@ public sealed class HeuristicAi(HeuristicAiOptions? options = null) : IPlayerCon
     {
         var me = engine.State.Player(seat);
         var opponent = engine.State.Player(seat.Opponent());
-        var lead = Lead(engine, seat);
+        var outcome = Outcome(engine, seat);
         var canAffordToLoseRound = me.Gems > 1;
 
         if (canAffordToLoseRound)
         {
             // Ahead without a hand disadvantage: make the opponent spend cards to win the round.
-            if (lead > 0 && me.Hand.Count >= opponent.Hand.Count - 1)
+            if (outcome > 0 && me.Hand.Count >= opponent.Hand.Count - 1)
             {
                 return pass;
             }
 
             // Behind with a small hand: keep the remaining cards for the next rounds.
-            if (lead < 0 && me.Hand.Count <= _options.ReserveHandSize)
+            if (outcome < 0 && me.Hand.Count <= _options.ReserveHandSize)
             {
                 return pass;
             }
@@ -123,35 +123,38 @@ public sealed class HeuristicAi(HeuristicAiOptions? options = null) : IPlayerCon
     {
         var copy = engine.Clone();
         var round = copy.State.Round;
-        copy.Apply(command);
+        copy.ApplyLegal(command);
 
         // Follow up our own pending choices greedily (e.g. medic chains) so the move is valued fully.
         while (copy.State.PendingChoice is { } choice && choice.Seat == seat && copy.State.Round == round)
         {
             var best = choice.Options
                 .Select(id => new ResolveChoiceCommand(seat, id))
-                .Select(resolve => (Command: resolve, Value: Evaluate(Apply(copy.Clone(), resolve), seat)))
+                .Select(resolve => (Command: resolve, Value: Evaluate(ApplyLegal(copy.Clone(), resolve), seat)))
                 .OrderByDescending(x => x.Value)
                 .First();
-            copy.Apply(best.Command);
+            copy.ApplyLegal(best.Command);
         }
 
-        return new Simulation(command, Evaluate(copy, seat), Lead(copy, seat));
+        var lead = Lead(copy, seat);
+        return new Simulation(command, Evaluate(copy, seat, lead), lead, Outcome(copy, seat, lead));
     }
 
-    private static MatchEngine Apply(MatchEngine engine, GameCommand command)
+    private static MatchEngine ApplyLegal(MatchEngine engine, GameCommand command)
     {
-        engine.Apply(command);
+        engine.ApplyLegal(command);
         return engine;
     }
 
-    private double Evaluate(MatchEngine engine, Seat seat)
+    private double Evaluate(MatchEngine engine, Seat seat) => Evaluate(engine, seat, Lead(engine, seat));
+
+    private double Evaluate(MatchEngine engine, Seat seat, int lead)
     {
         var me = engine.State.Player(seat);
         var opponent = engine.State.Player(seat.Opponent());
         var handValue = me.Hand.Sum(card => HandValue(card.Definition)) - (opponent.Hand.Count * _options.CardValue);
         var leaderBonus = me.LeaderUsed ? 0 : _options.CardValue / 2;
-        return Lead(engine, seat) + handValue + leaderBonus;
+        return lead + handValue + leaderBonus;
     }
 
     private double HandValue(CardDefinition card) =>
@@ -161,5 +164,18 @@ public sealed class HeuristicAi(HeuristicAiOptions? options = null) : IPlayerCon
 
     private static int Lead(MatchEngine engine, Seat seat) => engine.Score(seat) - engine.Score(seat.Opponent());
 
-    private sealed record Simulation(GameCommand Command, double Evaluation, int Lead);
+    private static int Outcome(MatchEngine engine, Seat seat) => Outcome(engine, seat, Lead(engine, seat));
+
+    /// <summary>Who would win the round if it ended now: 1 for <paramref name="seat"/>, -1 for the opponent, 0 for a draw.</summary>
+    private static int Outcome(MatchEngine engine, Seat seat, int lead)
+    {
+        if (lead != 0)
+        {
+            return Math.Sign(lead);
+        }
+
+        return FactionPerks.TieWinner(engine.State) is { } winner ? (winner == seat ? 1 : -1) : 0;
+    }
+
+    private sealed record Simulation(GameCommand Command, double Evaluation, int Lead, int Outcome);
 }

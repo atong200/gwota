@@ -43,6 +43,15 @@ internal sealed class Scenario
 
     public CardInstance AddToDiscard(Seat seat, CardDefinition definition) => Add(State.Player(seat).DiscardList, definition, seat);
 
+    /// <summary>Adds 1-strength melee units until the hand holds <paramref name="count"/> cards.</summary>
+    public void FillHand(Seat seat, int count)
+    {
+        while (State.Player(seat).HandList.Count < count)
+        {
+            AddToHand(seat, TestCards.Unit(1));
+        }
+    }
+
     /// <summary>Puts a card on <paramref name="side"/>'s row; <paramref name="owner"/> defaults to the side (differs for spies).</summary>
     public CardInstance AddToBoard(Seat side, RowType row, CardDefinition definition, Seat? owner = null) =>
         Add(State.Player(side).Row(row).CardList, definition, owner ?? side);
@@ -63,6 +72,7 @@ internal sealed class Scenario
         {
             LeaderUsed = leader is null,
             HasFinishedDraft = true,
+            HandLimit = MatchRules.Classic.MaxHandSize,
         };
 
     private CardInstance Add(List<CardInstance> list, CardDefinition definition, Seat owner)

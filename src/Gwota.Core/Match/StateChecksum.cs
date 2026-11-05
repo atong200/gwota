@@ -39,6 +39,7 @@ public static class StateChecksum
         hash.Add(player.LeaderUsed);
         hash.Add(player.HasFinishedDraft);
         hash.Add(player.RedrawLimit);
+        hash.Add(player.HandLimit);
         AddCards(ref hash, player.Deck);
         AddCards(ref hash, player.Hand);
         AddCards(ref hash, player.Discard);

@@ -9,13 +9,13 @@ public class DeckValidatorTests
     private static readonly Dictionary<string, LeaderDefinition> Leaders = new()
     {
         [RealmsLeader.Id] = RealmsLeader,
-        ["hells_leader"] = TestCards.Leader(LeaderAbility.ClearWeather, faction: Faction.Hells) with { Id = "hells_leader" },
+        ["abyss_leader"] = TestCards.Leader(LeaderAbility.ClearWeather, faction: Faction.Abyss) with { Id = "abyss_leader" },
     };
 
     private static readonly Dictionary<string, CardDefinition> Cards = new[]
     {
         TestCards.Unit(5, id: "realms_unit", faction: Faction.Realms),
-        TestCards.Unit(5, id: "hells_unit", faction: Faction.Hells),
+        TestCards.Unit(5, id: "abyss_unit", faction: Faction.Abyss),
         TestCards.Unit(5, id: "neutral_unit"),
         TestCards.Hero(10, id: "realms_hero") with { Faction = Faction.Realms },
         TestCards.Scorch(),
@@ -58,7 +58,7 @@ public class DeckValidatorTests
 
     [Fact]
     public void Cards_from_the_other_faction_are_rejected() =>
-        Validate(Deck(new DeckEntry("hells_unit", 1))).ShouldContain(e => e.Contains("'hells_unit' belongs to The Seven Hells"));
+        Validate(Deck(new DeckEntry("abyss_unit", 1))).ShouldContain(e => e.Contains("'abyss_unit' belongs to Abyssal Legion"));
 
     [Fact]
     public void Unknown_cards_and_bad_counts_are_rejected()
@@ -73,7 +73,7 @@ public class DeckValidatorTests
     public void Leader_must_exist_and_match_the_faction()
     {
         Validate(Deck() with { LeaderId = "nobody" }).ShouldContain(e => e.Contains("Unknown leader"));
-        Validate(Deck() with { LeaderId = "hells_leader" }).ShouldContain(e => e.Contains("belongs to The Seven Hells, not Realms of Men"));
+        Validate(Deck() with { LeaderId = "abyss_leader" }).ShouldContain(e => e.Contains("belongs to Abyssal Legion, not United Realms"));
     }
 
     [Fact]

@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/leader.schema.json",
+  "id": "chen",
+  "name": "Chen",
+  "faction": "realms",
+  "ability": "horn_row",
+  "row": "siege",
+  "abilityName": "Hand of God"
+}

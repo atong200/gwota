@@ -16,6 +16,9 @@ public sealed record MatchRules
 
     public int StartingHandSize { get; init; } = 10;
 
+    /// <summary>Most cards a hand may hold; further draws stay in the deck.</summary>
+    public int MaxHandSize { get; init; } = 20;
+
     /// <summary>Most cards a player may redraw during the draft phase.</summary>
     public int MaxRedraws { get; init; } = 2;
 
@@ -24,7 +27,7 @@ public sealed record MatchRules
     /// <summary>Cards drawn by the player of a spy.</summary>
     public int SpyDrawCount { get; init; } = 2;
 
-    /// <summary>Minimum row total for row-scorch abilities (unit and leader) to trigger.</summary>
+    /// <summary>Minimum row total for the row-scorch leader ability to trigger.</summary>
     public int RowScorchThreshold { get; init; } = 10;
 
     /// <summary>Who starts a round after a decisive round. After a tie, the starter alternates.</summary>

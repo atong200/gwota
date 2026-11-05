@@ -18,6 +18,9 @@ public interface IMatchLink : IDisposable
 
     Seat LocalSeat { get; }
 
+    /// <summary>The decks and names of the current match (<see cref="MatchSetup.PlayerDeck"/> sits in <see cref="Seat.One"/>).</summary>
+    MatchSetup Setup { get; }
+
     /// <summary>False while one of your commands is on its way, commands wait to be applied or the link is closed.</summary>
     bool CanSend { get; }
 

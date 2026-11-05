@@ -14,5 +14,6 @@ public sealed record LeaderDefinition
     /// <summary>Row parameter for row-based abilities (horn, scorch, weather).</summary>
     public RowType? Row { get; init; }
 
-    public string? Description { get; init; }
+    /// <summary>Display name of the ability, e.g. "Illuminate". Its rules text is generated from <see cref="Ability"/>.</summary>
+    public required string AbilityName { get; init; }
 }

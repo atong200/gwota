@@ -10,7 +10,7 @@
     "$schema": { "type": "string" },
     "id": { "type": "string", "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$" },
     "name": { "type": "string", "minLength": 1 },
-    "faction": { "enum": ["realms", "hells"] },
+    "faction": { "enum": ["realms", "abyss", "horde"] },
     "leader": { "description": "Leader id.", "type": "string" },
     "cards": {
       "description": "Card id → number of copies.",

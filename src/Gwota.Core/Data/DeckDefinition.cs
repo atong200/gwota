@@ -2,7 +2,7 @@ namespace Gwota.Core.Data;
 
 public sealed record DeckEntry(string CardId, int Count);
 
-/// <summary>A deck as authored in data: a faction, a leader and card counts.</summary>
+/// <summary>A deck as authored in data: a faction, a leader, card counts and the back its cards show face down.</summary>
 public sealed record DeckDefinition
 {
     public required string Id { get; init; }
@@ -14,6 +14,9 @@ public sealed record DeckDefinition
     public required string LeaderId { get; init; }
 
     public required IReadOnlyList<DeckEntry> Cards { get; init; }
+
+    /// <summary>A card back id (see <see cref="CardBacks"/>); purely cosmetic.</summary>
+    public string CardBackId { get; init; } = CardBacks.DefaultId;
 }
 
 /// <summary>Deck-building constraints (by default at least 22 units and at most 10 specials).</summary>

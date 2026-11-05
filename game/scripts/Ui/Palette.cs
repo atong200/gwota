@@ -22,6 +22,9 @@ public static class Palette
     public static readonly Color GemSlot = new("08090b");
     public static readonly Color Buff = new("7ee07e");
     public static readonly Color Debuff = new("ff7070");
+
+    /// <summary>Error and refusal text.</summary>
+    public static readonly Color Error = Debuff;
     public static readonly Color Dim = new(0, 0, 0, 0.7f);
     public static readonly Color TextDisabled = new("6b7078");
     public static readonly Color Button = new("2c3341");
@@ -39,7 +42,8 @@ public static class Palette
     public static Color ForFaction(Faction faction) => faction switch
     {
         Faction.Realms => new Color("2f4f8a"),
-        Faction.Hells => new Color("7a2a2a"),
+        Faction.Abyss => new Color("2f6b3a"),
+        Faction.Horde => new Color("7a2a2a"),
         _ => new Color("4a4f5a"),
     };
 }

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/card.schema.json",
+  "id": "elder_treant",
+  "name": "Elder Treant",
+  "faction": "neutral",
+  "kind": "unit",
+  "rows": [
+    "melee"
+  ],
+  "strength": 3,
+  "abilities": [
+    "muster"
+  ],
+  "musterGroup": "elder_treant"
+}

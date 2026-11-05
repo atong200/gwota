@@ -25,6 +25,34 @@ public class DeckEditorTests
     }
 
     [Fact]
+    public void The_card_back_starts_from_the_deck_and_changes_with_set_card_back()
+    {
+        var editor = Editor(DeckBuildingData.EmptyDeck() with { CardBackId = "aegis" });
+        editor.CardBackId.ShouldBe("aegis");
+
+        editor.SetCardBack(" red_mist ").ShouldBeTrue();
+
+        editor.Deck.CardBackId.ShouldBe("red_mist");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void A_blank_card_back_is_refused(string? id)
+    {
+        var editor = Editor(DeckBuildingData.EmptyDeck() with { CardBackId = "aegis" });
+
+        editor.SetCardBack(id).ShouldBeFalse();
+
+        editor.CardBackId.ShouldBe("aegis");
+    }
+
+    [Fact]
+    public void A_blank_deck_card_back_is_edited_as_the_default() =>
+        Editor(DeckBuildingData.EmptyDeck() with { CardBackId = " " }).CardBackId.ShouldBe(CardBacks.DefaultId);
+
+    [Fact]
     public void Removing_the_last_copy_drops_the_entry_and_removing_a_missing_card_fails()
     {
         var editor = Editor();
@@ -108,8 +136,8 @@ public class DeckEditorTests
     {
         var editor = Editor();
 
-        editor.AddRefusal(Data.Cards["hells_1"]).ShouldBe("hells_1 belongs to The Seven Hells.");
-        editor.TryAdd("hells_1").ShouldBeFalse();
+        editor.AddRefusal(Data.Cards["abyss_1"]).ShouldBe("abyss_1 belongs to Abyssal Legion.");
+        editor.TryAdd("abyss_1").ShouldBeFalse();
         editor.TryAdd("no_such_card").ShouldBeFalse();
     }
 
@@ -159,6 +187,29 @@ public class DeckEditorTests
     }
 
     [Fact]
+    public void Lines_and_stats_follow_every_change_and_are_reused_in_between()
+    {
+        var editor = Editor();
+        editor.TryAdd("realms_3");
+        var lines = editor.Lines;
+
+        editor.Lines.ShouldBeSameAs(lines);
+        editor.Stats.ShouldBeSameAs(editor.Stats);
+
+        editor.TryAdd("realms_3").ShouldBeTrue();
+        editor.Lines.ShouldNotBeSameAs(lines);
+        editor.Lines.Single().Count.ShouldBe(2);
+        editor.Stats.Units.ShouldBe(2);
+
+        editor.Remove("realms_3").ShouldBeTrue();
+        editor.Lines.Single().Count.ShouldBe(1);
+        editor.Stats.Units.ShouldBe(1);
+
+        editor.TryAdd("unknown").ShouldBeFalse();
+        editor.Stats.Units.ShouldBe(1);
+    }
+
+    [Fact]
     public void Lines_are_grouped_by_row_then_strongest_first_with_specials_last()
     {
         var editor = Editor();
@@ -203,10 +254,10 @@ public class DeckEditorTests
     {
         var editor = Editor();
 
-        editor.Leaders.Select(l => l.Id).ShouldBe(["abaddon", "legion_commander"]);
+        editor.Leaders.Select(l => l.Id).ShouldBe(["legion_commander", "luna"]);
         editor.SetLeader("underlord").ShouldBeFalse();
-        editor.SetLeader("abaddon").ShouldBeTrue();
-        editor.Deck.LeaderId.ShouldBe("abaddon");
+        editor.SetLeader("luna").ShouldBeTrue();
+        editor.Deck.LeaderId.ShouldBe("luna");
     }
 
     [Fact]
@@ -214,7 +265,7 @@ public class DeckEditorTests
     {
         var editor = Editor(DeckBuildingData.EmptyDeck(leader: "underlord"));
 
-        editor.Leader.Id.ShouldBe("abaddon");
+        editor.Leader.Id.ShouldBe("legion_commander");
     }
 
     [Fact]
