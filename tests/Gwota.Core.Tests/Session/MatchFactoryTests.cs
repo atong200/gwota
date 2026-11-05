@@ -144,4 +144,5 @@ public class MatchFactoryTests
         var setup = new MatchSetup(Deck("realms_starter"), Deck("hells_starter"), 11, "Alice", "Bob");
 
         MatchFactory.VersusPlayer(Shipped, setup).Checksum().ShouldBe(MatchFactory.VersusPlayer(Shipped, setup).Checksum());
-    }}
+    }
+}

@@ -217,4 +217,5 @@ public class MatchSessionTests
 
         session.CanAct(Seat.One).ShouldBeFalse();
         session.CanAct(Seat.Two).ShouldBeFalse();
-    }}
+    }
+}

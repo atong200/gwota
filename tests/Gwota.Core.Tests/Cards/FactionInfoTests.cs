@@ -1,4 +1,4 @@
-﻿namespace Gwota.Core.Tests.Cards;
+namespace Gwota.Core.Tests.Cards;
 
 public class FactionInfoTests
 {

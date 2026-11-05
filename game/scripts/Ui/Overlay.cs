@@ -1,4 +1,4 @@
-﻿using Godot;
+using Godot;
 using Gwota.Core.Cards;
 
 namespace Gwota.Game.Ui;

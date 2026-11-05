@@ -1,4 +1,4 @@
-﻿namespace Gwota.Core.DeckBuilding;
+namespace Gwota.Core.DeckBuilding;
 
 /// <summary>Id renames applied to deck files saved before version 2.</summary>
 internal static class LegacyIds

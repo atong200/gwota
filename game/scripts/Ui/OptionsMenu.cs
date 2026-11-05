@@ -1,4 +1,4 @@
-﻿using Godot;
+using Godot;
 using Gwota.Core.Settings;
 using Gwota.Game.Infrastructure;
 

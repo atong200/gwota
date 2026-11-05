@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Nodes;
+using System.Text.Json.Nodes;
 using Gwota.Core.Data;
 using Gwota.Core.DeckBuilding;
 

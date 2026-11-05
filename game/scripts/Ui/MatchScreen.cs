@@ -1,4 +1,4 @@
-﻿using Godot;
+using Godot;
 using Gwota.Core.Cards;
 using Gwota.Core.Common;
 using Gwota.Core.Match;

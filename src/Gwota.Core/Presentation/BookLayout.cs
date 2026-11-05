@@ -1,4 +1,4 @@
-﻿namespace Gwota.Core.Presentation;
+namespace Gwota.Core.Presentation;
 
 /// <summary>
 /// Layout of the deck builder's book: a fixed <see cref="BookLayout.Columns"/> x <see cref="BookLayout.Rows"/> grid,

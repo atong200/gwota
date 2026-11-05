@@ -1,4 +1,4 @@
-﻿using Gwota.Core.Data;
+using Gwota.Core.Data;
 using Gwota.Core.DeckBuilding;
 
 namespace Gwota.Core.Tests.DeckBuilding;
