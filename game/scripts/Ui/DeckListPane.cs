@@ -22,11 +22,11 @@ public sealed partial class DeckListPane : VBoxContainer
     {
         _data = data ?? throw new ArgumentNullException(nameof(data));
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        AddThemeConstantOverride("separation", 12);
+        this.WithGap(12);
 
         AddChild(Widgets.Label("My decks", 0, Palette.Highlight, HorizontalAlignment.Center).AsDisplay(26));
 
-        _list.AddThemeConstantOverride("separation", 8);
+        _list.WithGap(8);
         var scroll = new ScrollContainer
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
@@ -65,23 +65,21 @@ public sealed partial class DeckListPane : VBoxContainer
         name.AddThemeFontOverride("font", Fonts.Bold);
         name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var title = new HBoxContainer();
-        title.AddThemeConstantOverride("separation", 8);
+        var title = new HBoxContainer().WithGap(8);
         title.AddChild(name);
         if (!editor.IsPlayable)
         {
             title.AddChild(Widgets.Tag("Incomplete", Palette.Debuff, string.Join('\n', editor.Problems), 13));
         }
 
-        var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = AlignmentMode.Center };
-        details.AddThemeConstantOverride("separation", 0);
+        var details = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = AlignmentMode.Center }.WithGap(0);
         details.AddChild(title);
         details.AddChild(Widgets.Label($"{FactionInfo.Name(deck.Faction)} - {editor.Leader.Name}", 16, Palette.Muted));
 
         var content = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         content.OffsetRight = -10;
-        content.AddThemeConstantOverride("separation", 10);
+        content.WithGap(10);
         content.AddChild(new ColorRect { Color = color, CustomMinimumSize = new Vector2(8, 0), MouseFilter = MouseFilterEnum.Ignore });
         content.AddChild(details);
         IgnoreMouse(content);

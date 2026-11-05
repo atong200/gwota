@@ -45,19 +45,12 @@ public sealed partial class CollectionScreen : Control
 
         var body = new HBoxContainer();
         body.SetAnchorsPreset(LayoutPreset.FullRect);
-        body.AddThemeConstantOverride("separation", 18);
+        body.WithGap(18);
         body.AddChild(_book);
         body.AddChild(_pane);
 
-        var margin = new MarginContainer();
-        margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        foreach (var side in new[] { "left", "right", "top", "bottom" })
-        {
-            margin.AddThemeConstantOverride($"margin_{side}", 18);
-        }
+        AddChild(Widgets.Margins(body, 18));
 
-        margin.AddChild(body);
-        AddChild(margin);
         _effects.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(_effects);
 
@@ -135,16 +128,7 @@ public sealed partial class CollectionScreen : Control
         _pane.AddChild(content);
     }
 
-    private void NewDeck() => ChoiceDialog.Show(
-        this,
-        "New deck",
-        "Choose the deck's faction. It cannot be changed later.",
-        FactionChoice(Faction.Realms),
-        FactionChoice(Faction.Abyss),
-        FactionChoice(Faction.Horde));
-
-    private Choice FactionChoice(Faction faction) =>
-        new(FactionInfo.Name(faction), () => Edit(_store.Create(faction, _data).Id), Palette.ForFaction(faction));
+    private void NewDeck() => FactionLeaderDialog.ShowNew(this, _data, (faction, leaderId) => Edit(_store.Create(faction, _data, leaderId).Id));
 
     private void OnSlotClicked(BookSlot slot)
     {

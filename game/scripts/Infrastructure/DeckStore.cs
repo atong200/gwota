@@ -47,10 +47,10 @@ public sealed class DeckStore
         return store;
     }
 
-    /// <summary>Creates, stores and returns an empty deck of <paramref name="faction"/>.</summary>
-    public DeckDefinition Create(Faction faction, GameData data)
+    /// <summary>Creates, stores and returns an empty deck of <paramref name="faction"/> led by <paramref name="leaderId"/>.</summary>
+    public DeckDefinition Create(Faction faction, GameData data, string? leaderId = null)
     {
-        var deck = Collection.Create(faction, data);
+        var deck = Collection.Create(faction, data, leaderId);
         Write();
         return deck;
     }

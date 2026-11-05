@@ -12,7 +12,7 @@ public sealed partial class CardPreview : CanvasLayer
 {
     public const string Group = "card_preview";
 
-    private static readonly Vector2 CardSize = new(200, 282);
+    private static readonly Vector2 CardSize = CardView.OfHeight(282);
     private static readonly Vector2 CursorOffset = new(22, 22);
     private const int TextWidth = 300;
 
@@ -24,6 +24,7 @@ public sealed partial class CardPreview : CanvasLayer
     private readonly ColorRect _separator;
     private readonly RichTextLabel _rules;
     private readonly RichTextLabel _flavor;
+    private static CardPreview? _current;
     private object? _source;
 
     public CardPreview()
@@ -36,26 +37,23 @@ public sealed partial class CardPreview : CanvasLayer
         _name.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _rowIcons = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
-        _rowIcons.AddThemeConstantOverride("separation", 4);
+        _rowIcons.WithGap(4);
         _separator = new ColorRect { CustomMinimumSize = new Vector2(0, 2), MouseFilter = Control.MouseFilterEnum.Ignore };
         _rules = CreateRules();
         _flavor = CreateRules();
 
-        var header = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        header.AddThemeConstantOverride("separation", 10);
+        var header = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore }.WithGap(10);
         header.AddChild(_name);
         header.AddChild(_rowIcons);
 
-        var text = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(TextWidth, 0) };
-        text.AddThemeConstantOverride("separation", 8);
+        var text = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(TextWidth, 0) }.WithGap(8);
         text.AddChild(header);
         text.AddChild(_separator);
         text.AddChild(_rules);
         text.AddChild(new Control { MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsVertical = Control.SizeFlags.ExpandFill });
         text.AddChild(_flavor);
 
-        var layout = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        layout.AddThemeConstantOverride("separation", 16);
+        var layout = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore }.WithGap(16);
         layout.AddChild(_cardSlot);
         layout.AddChild(text);
 
@@ -68,7 +66,17 @@ public sealed partial class CardPreview : CanvasLayer
     }
     /// <summary>The preview of the scene <paramref name="from"/> belongs to, or null when none is hosted.</summary>
     public static CardPreview? Find(Node from) =>
-        from.IsInsideTree() ? from.GetTree().GetFirstNodeInGroup(Group) as CardPreview : null;
+        from.IsInsideTree() ? _current ?? from.GetTree().GetFirstNodeInGroup(Group) as CardPreview : null;
+
+    public override void _EnterTree() => _current = this;
+
+    public override void _ExitTree()
+    {
+        if (_current == this)
+        {
+            _current = null;
+        }
+    }
 
     public bool IsShowing => _panel.Visible;
 

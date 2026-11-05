@@ -9,18 +9,20 @@ using Gwota.Game.Infrastructure;
 namespace Gwota.Game.Ui;
 
 /// <summary>
-/// The collection's right pane for an open deck: leader, name, rename/delete, faction, status, counts and cards by row.
+/// The collection's right pane for an open deck: leader and card back, name, rename/delete, faction, status, counts and
+/// cards by row.
 /// Clicking a line removes one copy; every change is saved immediately.
 /// </summary>
 public sealed partial class DeckEditPane : VBoxContainer
 {
     private const double RemoveFadeDuration = 0.2;
-    private static readonly Vector2 LeaderSize = new(110, 156);
+    private const int HeaderGap = 16;
+    private static readonly Vector2 LeaderSize = CardView.OfHeight(156);
 
     private readonly GameData _data;
     private readonly DeckStore _store;
     private readonly Func<double> _durationScale;
-    private readonly CenterContainer _leader = new();
+    private readonly HBoxContainer _header = new() { Alignment = AlignmentMode.Center };
     private readonly Label _name = Widgets.Label(string.Empty, 0, Palette.Highlight).WithDisplayFont(22);
     private readonly HBoxContainer _tags = new() { Alignment = AlignmentMode.Center };
     private readonly Label _units = Widgets.Label(string.Empty, 18);
@@ -35,16 +37,17 @@ public sealed partial class DeckEditPane : VBoxContainer
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _durationScale = durationScale ?? throw new ArgumentNullException(nameof(durationScale));
         Editor = new DeckEditor(deck ?? throw new ArgumentNullException(nameof(deck)), data);
-        AddThemeConstantOverride("separation", 10);
+        this.WithGap(10);
 
-        AddChild(_leader);
+        _header.WithGap(HeaderGap);
+        AddChild(_header);
         AddChild(BuildNameRow());
-        _tags.AddThemeConstantOverride("separation", 8);
+        _tags.WithGap(8);
         AddChild(_tags);
         AddChild(BuildCounts());
         AddChild(new HSeparator());
 
-        _lines.AddThemeConstantOverride("separation", 4);
+        _lines.WithGap(4);
         LinesScroll.AddChild(_lines);
         AddChild(LinesScroll);
         AddChild(Widgets.Label("Click a card to remove one copy.", 16, Palette.Muted, HorizontalAlignment.Center));
@@ -82,7 +85,7 @@ public sealed partial class DeckEditPane : VBoxContainer
 
     public void Render()
     {
-        RenderLeader();
+        RenderHeader();
         _name.Text = Editor.Name;
         _name.TooltipText = Editor.Name;
         RenderTags();
@@ -103,8 +106,7 @@ public sealed partial class DeckEditPane : VBoxContainer
             delete.TooltipText = "You need at least one deck.";
         }
 
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 6);
+        var row = new HBoxContainer().WithGap(6);
         row.AddChild(_name);
         row.AddChild(Widgets.IconButton(Icons.PenIcon, "Rename this deck", Rename));
         row.AddChild(delete);
@@ -123,21 +125,32 @@ public sealed partial class DeckEditPane : VBoxContainer
         return counts;
     }
 
-    private void RenderLeader()
+    private void RenderHeader()
     {
-        _leader.ClearChildren();
-        var view = new LeaderView(Editor.Leader, LeaderSize)
+        _header.ClearChildren();
+        var leader = new LeaderView(Editor.Leader, LeaderSize)
         {
-            TooltipText = $"{Editor.Leader.Name}: {CardText.Leader(Editor.Leader)}\nClick to change the leader.",
+            TooltipText = $"{Editor.Leader.Name}\n{CardText.LeaderLine(Editor.Leader).Plain}\nClick to change the leader.",
         };
-        view.Clicked += _ => LeaderPickerDialog.Show(this, Editor.Leaders, Editor.Leader.Id, ChangeLeader);
-        _leader.AddChild(view);
+        leader.Clicked += _ => FactionLeaderDialog.ShowChangeLeader(this, _data, Editor.Faction, Editor.Leader.Id, ChangeLeader);
+        _header.AddChild(leader);
+
+        var back = CardArt.CardBacks().Resolve(Editor.CardBackId);
+        var style = new CardBackStyle(back.Id, Editor.Faction);
+        var tile = new CardBackTile(style, LeaderSize) { TooltipText = $"{back.Name}\nClick to change the card back." };
+        tile.Clicked += _ => CardBackDialog.Show(this, style, ChangeCardBack);
+        _header.AddChild(tile);
     }
 
     private void RenderTags()
     {
         _tags.ClearChildren();
-        _tags.AddChild(Widgets.Tag(FactionInfo.Name(Editor.Faction), Palette.ForFaction(Editor.Faction).Lightened(0.35f), "The deck's faction (it cannot change)."));
+        var faction = Editor.Faction;
+        _tags.AddChild(Widgets.Tag(
+            FactionInfo.Name(faction),
+            Palette.ForFaction(faction).Lightened(0.35f),
+            FactionText.Plain(faction),
+            richTooltip: () => FactionText.Describe(faction, 300)));
         var problems = Editor.Problems;
         _tags.AddChild(problems.Count == 0
             ? Widgets.Tag("Ready", Palette.Buff, "This deck can be played.")
@@ -186,8 +199,7 @@ public sealed partial class DeckEditPane : VBoxContainer
             BookFilter.Siege => Icons.ForRow(RowType.Siege),
             _ => Icons.SpecialIcon,
         };
-        var header = new HBoxContainer();
-        header.AddThemeConstantOverride("separation", 8);
+        var header = new HBoxContainer().WithGap(8);
         header.AddChild(Icons.Rect(icon, 18, Palette.Muted));
         header.AddChild(Widgets.Label(group == BookFilter.Special ? "Special" : group.ToString(), 0, Palette.Muted).AsDisplay(16));
         header.AddChild(Widgets.Label($"({count})", 16, Palette.Muted));
@@ -230,6 +242,15 @@ public sealed partial class DeckEditPane : VBoxContainer
     private void ChangeLeader(string leaderId)
     {
         if (Editor.SetLeader(leaderId))
+        {
+            Save();
+            Render();
+        }
+    }
+
+    private void ChangeCardBack(string backId)
+    {
+        if (Editor.SetCardBack(backId))
         {
             Save();
             Render();

@@ -41,17 +41,13 @@ public sealed partial class DeckLineRow : Button
         CountLabel = Widgets.Label(line.Count > 1 ? $"x{line.Count}" : string.Empty, 17, Palette.Highlight, HorizontalAlignment.Right);
         CountLabel.CustomMinimumSize = new Vector2(30, 0);
 
-        var content = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        content.AddThemeConstantOverride("separation", 8);
+        var content = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore }.WithGap(8);
         content.AddChild(strength);
         content.AddChild(name);
         content.AddChild(CountLabel);
 
-        var margin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
-        margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 6);
-        margin.AddThemeConstantOverride("margin_right", 10);
-        margin.AddChild(content);
+        var margin = Widgets.Margins(content, left: 6, top: 0, right: 10, bottom: 0);
+        margin.MouseFilter = MouseFilterEnum.Ignore;
         AddChild(margin);
 
         var faction = Palette.ForFaction(definition.Faction);
