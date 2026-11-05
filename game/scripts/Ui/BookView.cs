@@ -21,10 +21,9 @@ public sealed partial class BookView : VBoxContainer
     private readonly StyleBoxFlat _pageStyle = Widgets.Box(Palette.Panel, Palette.PanelBorder, 1, radius: 10, margin: 16);
     private readonly Control _grid = new() { SizeFlagsVertical = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Pass, ClipContents = false };
     private readonly Label _hint = Widgets.Label(string.Empty, 18, Palette.Muted, HorizontalAlignment.Center);
-    private readonly Label _page = Widgets.Label(string.Empty, 18, Palette.Text, HorizontalAlignment.Center);
-    private readonly Button _previous;
-    private readonly Button _next;
+    private readonly PagerBar _pager;
     private readonly List<BookSlot> _slots = [];
+    private readonly Dictionary<(Color Background, bool IsOpen), StyleBoxFlat> _tabBoxes = [];
 
     private CardBook? _book;
     private Func<CardDefinition, SlotState> _stateOf = _ => new SlotState(0, false);
@@ -34,22 +33,20 @@ public sealed partial class BookView : VBoxContainer
     public BookView()
     {
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        AddThemeConstantOverride("separation", 0);
+        this.WithGap(0);
         _pageStyle.CornerRadiusTopLeft = 0;
 
-        _previous = PagerButton(Icons.PreviousIcon, "Previous page", () => Flip(_book?.PreviousPage() ?? false));
-        _next = PagerButton(Icons.NextIcon, "Next page", () => Flip(_book?.NextPage() ?? false));
+        _pager = new PagerBar(() => Flip(_book?.PreviousPage() ?? false), () => Flip(_book?.NextPage() ?? false), 64, Palette.Text, buttonSize: 40).WithGap(4);
 
         var header = new HBoxContainer();
-        _tabs.AddThemeConstantOverride("separation", 4);
+        _tabs.WithGap(4);
         header.AddChild(_tabs);
         header.AddChild(Widgets.Spacer(vertical: false));
         header.AddChild(BuildFilters());
         AddChild(header);
 
         _grid.Resized += OnGridResized;
-        var page = new VBoxContainer();
-        page.AddThemeConstantOverride("separation", 10);
+        var page = new VBoxContainer().WithGap(10);
         page.AddChild(_grid);
         page.AddChild(BuildFooter());
         var frame = Widgets.Panel(page, _pageStyle);
@@ -87,7 +84,7 @@ public sealed partial class BookView : VBoxContainer
     public void ShowHint(string text, bool isError = false)
     {
         _hint.Text = text;
-        _hint.AddThemeColorOverride("font_color", isError ? Palette.Debuff : Palette.Muted);
+        _hint.AddThemeColorOverride("font_color", isError ? Palette.Error : Palette.Muted);
     }
 
     /// <summary>The mouse wheel turns pages anywhere over the page, cards included (they stop mouse events).</summary>
@@ -107,8 +104,7 @@ public sealed partial class BookView : VBoxContainer
 
     private HBoxContainer BuildFilters()
     {
-        var filters = new HBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkEnd };
-        filters.AddThemeConstantOverride("separation", 6);
+        var filters = new HBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkEnd }.WithGap(6);
         var group = new ButtonGroup();
         foreach (var filter in Enum.GetValues<BookFilter>())
         {
@@ -119,9 +115,8 @@ public sealed partial class BookView : VBoxContainer
             filters.AddChild(button);
         }
 
-        var margin = new MarginContainer { SizeFlagsVertical = SizeFlags.ShrinkEnd };
-        margin.AddThemeConstantOverride("margin_bottom", 6);
-        margin.AddChild(filters);
+        var margin = Widgets.Margins(filters, left: 0, top: 0, right: 0, bottom: 6, fillParent: false);
+        margin.SizeFlagsVertical = SizeFlags.ShrinkEnd;
         var wrapper = new HBoxContainer { SizeFlagsVertical = SizeFlags.Fill };
         wrapper.AddChild(margin);
         return wrapper;
@@ -165,24 +160,13 @@ public sealed partial class BookView : VBoxContainer
 
         _hint.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _hint.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-        _page.CustomMinimumSize = new Vector2(64, 0);
 
-        var pager = new HBoxContainer();
-        pager.AddThemeConstantOverride("separation", 4);
-        pager.AddChild(_previous);
-        pager.AddChild(_page);
-        pager.AddChild(_next);
-
-        var footer = new HBoxContainer();
-        footer.AddThemeConstantOverride("separation", 12);
+        var footer = new HBoxContainer().WithGap(12);
         footer.AddChild(back);
         footer.AddChild(_hint);
-        footer.AddChild(pager);
+        footer.AddChild(_pager);
         return footer;
     }
-
-    private static Button PagerButton(Texture2D icon, string tooltip, Action onPressed) =>
-        Widgets.IconButton(icon, tooltip, onPressed, size: 40);
 
     private void SetTab(Faction tab)
     {
@@ -236,9 +220,8 @@ public sealed partial class BookView : VBoxContainer
         }
 
         _pageStyle.BgColor = Palette.PageTint(_book.Tab);
-        _page.Text = $"{_book.Page + 1}/{_book.PageCount}";
-        _previous.Disabled = !_book.HasPreviousPage;
-        _next.Disabled = !_book.HasNextPage;
+        _pager.Show($"{_book.Page + 1}/{_book.PageCount}", _book.HasPreviousPage, _book.HasNextPage);
+
         RenderSlots();
     }
 
@@ -257,7 +240,7 @@ public sealed partial class BookView : VBoxContainer
     }
 
     /// <summary>Faction tabs in their page color; the open tab is taller and merges into the page.</summary>
-    private static void StyleTab(Button button, Faction faction, bool isOpen)
+    private void StyleTab(Button button, Faction faction, bool isOpen)
     {
         var color = Palette.PageTint(faction);
         button.CustomMinimumSize = new Vector2(150, isOpen ? 46 : 40);
@@ -272,13 +255,19 @@ public sealed partial class BookView : VBoxContainer
         button.AddThemeColorOverride("font_pressed_color", isOpen ? Palette.Highlight : Palette.Text);
     }
 
-    private static StyleBoxFlat TabBox(Color background, bool isOpen)
+    private StyleBoxFlat TabBox(Color background, bool isOpen)
     {
+        if (_tabBoxes.TryGetValue((background, isOpen), out var cached))
+        {
+            return cached;
+        }
+
         var box = Widgets.Box(background, Palette.PanelBorder, 1, radius: 0, margin: 8);
         box.CornerRadiusTopLeft = box.CornerRadiusTopRight = TabRadius;
         box.BorderWidthBottom = isOpen ? 0 : 1;
         box.ContentMarginLeft = box.ContentMarginRight = 18;
         box.BorderColor = isOpen ? Palette.PanelBorder.Lightened(0.15f) : Palette.PanelBorder;
+        _tabBoxes[(background, isOpen)] = box;
         return box;
     }
 
