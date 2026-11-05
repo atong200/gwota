@@ -13,12 +13,11 @@ public sealed partial class ConfirmDialog : Modal
         text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         Content.AddChild(text);
 
-        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        buttons.AddThemeConstantOverride("separation", 16);
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center }.WithGap(16);
         var cancel = MenuButton("Cancel", Cancel);
         var confirm = MenuButton(confirmText, () =>
         {
-            QueueFree();
+            Close();
             onConfirm();
         });
         UiTheme.TintButton(confirm, Palette.Danger);
@@ -37,6 +36,4 @@ public sealed partial class ConfirmDialog : Modal
         ArgumentNullException.ThrowIfNull(onConfirm);
         parent.AddChild(new ConfirmDialog(title, message, confirmText, onConfirm, style));
     }
-
-    protected override void Cancel() => QueueFree();
 }

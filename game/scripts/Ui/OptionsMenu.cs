@@ -11,14 +11,12 @@ namespace Gwota.Game.Ui;
 public sealed partial class OptionsMenu : Modal
 {
     private readonly SettingsStore _settings;
-    private readonly Action _onBack;
     private readonly LineEdit _username = new();
 
-    public OptionsMenu(SettingsStore settings, Action onBack)
+    public OptionsMenu(SettingsStore settings)
         : base(560)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _onBack = onBack ?? throw new ArgumentNullException(nameof(onBack));
 
         var tabs = new TabContainer { CustomMinimumSize = new Vector2(0, 240) };
         tabs.AddChild(BuildSoundTab());
@@ -40,7 +38,7 @@ public sealed partial class OptionsMenu : Modal
     {
         CommitUsername();
         _settings.Flush();
-        _onBack();
+        Close();
     }
 
     /// <summary>The name shown in matches (banners, log). Saved when confirmed, when the field loses focus and on close.</summary>
@@ -63,16 +61,14 @@ public sealed partial class OptionsMenu : Modal
             _settings.Flush();
         };
 
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
+        var row = new HBoxContainer().WithGap(12);
         var label = Widgets.Label("Username", 18);
         label.CustomMinimumSize = new Vector2(140, 0);
         label.VerticalAlignment = VerticalAlignment.Center;
         row.AddChild(label);
         row.AddChild(_username);
 
-        var tab = new VBoxContainer { Name = "Profile" };
-        tab.AddThemeConstantOverride("separation", 12);
+        var tab = new VBoxContainer { Name = "Profile" }.WithGap(12);
         tab.AddChild(row);
         return tab;
     }
@@ -106,16 +102,14 @@ public sealed partial class OptionsMenu : Modal
         };
         slider.DragEnded += _ => _settings.Flush();
 
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
+        var row = new HBoxContainer().WithGap(12);
         var label = Widgets.Label("Master volume", 18);
         label.CustomMinimumSize = new Vector2(140, 0);
         row.AddChild(label);
         row.AddChild(slider);
         row.AddChild(percent);
 
-        var tab = new VBoxContainer { Name = "Sound" };
-        tab.AddThemeConstantOverride("separation", 12);
+        var tab = new VBoxContainer { Name = "Sound" }.WithGap(12);
         tab.AddChild(row);
         return tab;
     }
@@ -142,16 +136,14 @@ public sealed partial class OptionsMenu : Modal
             _settings.Flush();
         };
 
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
+        var row = new HBoxContainer().WithGap(12);
         var label = Widgets.Label("Animations", 18);
         label.CustomMinimumSize = new Vector2(140, 0);
         label.VerticalAlignment = VerticalAlignment.Center;
         row.AddChild(label);
         row.AddChild(picker);
 
-        var tab = new VBoxContainer { Name = "Gameplay" };
-        tab.AddThemeConstantOverride("separation", 12);
+        var tab = new VBoxContainer { Name = "Gameplay" }.WithGap(12);
         tab.AddChild(row);
         return tab;
     }

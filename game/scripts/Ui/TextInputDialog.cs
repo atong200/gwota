@@ -20,8 +20,7 @@ public sealed partial class TextInputDialog : Modal
         Content.AddChild(Title(title, 26));
         Content.AddChild(_input);
 
-        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        buttons.AddThemeConstantOverride("separation", 16);
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center }.WithGap(16);
         foreach (var button in new[] { MenuButton("Cancel", Cancel), MenuButton("OK", Confirm) })
         {
             button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -44,13 +43,11 @@ public sealed partial class TextInputDialog : Modal
         _input.SelectAll();
     }
 
-    protected override void Cancel() => QueueFree();
-
     private void Confirm()
     {
         if (_onConfirm(_input.Text))
         {
-            QueueFree();
+            Close();
         }
     }
 }

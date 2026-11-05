@@ -162,9 +162,7 @@ public sealed partial class MainMenu : Control
 
     private void OpenOptions()
     {
-        OptionsMenu? options = null;
-        options = new OptionsMenu(_settings, () => options!.QueueFree());
-        AddChild(options);
+        AddChild(new OptionsMenu(_settings));
     }
 
     private static Button MenuButton(string text, Action onPressed)

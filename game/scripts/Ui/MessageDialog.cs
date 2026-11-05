@@ -23,6 +23,4 @@ public sealed partial class MessageDialog : Modal
 
     public static void ComingSoon(Node parent, string feature) =>
         Show(parent, "Coming soon", $"{feature} is not available yet.");
-
-    protected override void Cancel() => QueueFree();
 }

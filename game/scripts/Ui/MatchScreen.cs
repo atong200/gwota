@@ -393,7 +393,8 @@ public sealed partial class MatchScreen : Control
         }
 
         Action? forfeit = _session.IsControlled(_local) || _session.IsFinished || _link?.CloseReason is not null ? null : Forfeit;
-        _pauseMenu = new PauseMenu(_settings, ClosePauseMenu, forfeit, _actions.ExitToMenu, _actions.Quit);
+        _pauseMenu = new PauseMenu(_settings, forfeit, _actions.ExitToMenu, _actions.Quit);
+        _pauseMenu.Closed += ClosePauseMenu;
         AddChild(_pauseMenu);
     }
 
