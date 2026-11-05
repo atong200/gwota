@@ -32,9 +32,19 @@ jobs:
         with:
           global-json-file: global.json
 
+      # No lock files, so the package cache is keyed on the files that declare dependencies.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'Directory.Packages.props', 'Directory.Build.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
       # Godot.NET.Sdk comes from nuget.org, so the game scripts compile without installing Godot.
       - name: Build
         run: dotnet build Gwota.slnx
+
+      - name: Check formatting
+        run: dotnet format Gwota.slnx --verify-no-changes --no-restore
 
       - name: Test core
         run: dotnet test --project tests/Gwota.Core.Tests --no-build
