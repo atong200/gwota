@@ -17,8 +17,8 @@ public sealed class LanGuest : IDisposable
         _connection = connection;
         _data = data;
         var player = guest.Normalized();
-        _connection.Send(NetCodec.Encode(new HelloMessage(
-            NetProtocol.Version, identity.GameVersion, identity.Fingerprint, player.Name, DeckDto.From(player.Deck))));
+        _connection.Send(new HelloMessage(
+            NetProtocol.Version, identity.GameVersion, identity.Fingerprint, player.Name, DeckDto.From(player.Deck)));
     }
 
     public LanMatch? Match { get; private set; }
@@ -34,23 +34,22 @@ public sealed class LanGuest : IDisposable
         }
 
         var closed = _connection.IsClosed;
-        while (_connection.TryReceive(out var line))
+        while (_connection.TryReceiveMessage(out var message))
         {
-            switch (NetCodec.Decode(line))
+            switch (message)
             {
                 case RejectMessage reject:
                     Fail(reject.Reason ?? "The host refused to start the match.");
                     return;
                 case StartMessage start:
-                    var (setup, error) = LanMatch.SetupFrom(start, _data);
-                    if (setup is null)
+                    if (LanMatch.TryReadSetup(start, _data, out var setup, out var error))
                     {
-                        _connection.Send(NetCodec.Encode(new LeaveMessage(LeaveReason.Quit)));
-                        Fail(error!);
+                        Match = LanMatch.Guest(_connection, _data, setup);
                     }
                     else
                     {
-                        Match = LanMatch.Guest(_connection, _data, setup);
+                        _connection.Send(new LeaveMessage(LeaveReason.Quit));
+                        Fail(error);
                     }
 
                     return;

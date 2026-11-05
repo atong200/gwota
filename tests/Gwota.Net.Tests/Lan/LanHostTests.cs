@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Gwota.Net.Lan;
 using Gwota.Net.Transport;
 
@@ -55,6 +56,40 @@ public sealed class LanHostTests : IDisposable
     }
 
     [Fact]
+    public void A_guest_speaking_another_protocol_is_told_so()
+    {
+        using var host = Host();
+        var guest = _listener.Connect();
+        guest.Send(new HelloMessage(
+            NetProtocol.Version - 1, LanRig.Identity.GameVersion, LanRig.Identity.Fingerprint, "Bob", DeckDto.From(Shipped.LastDeck)));
+
+        host.Poll();
+
+        guest.TryReceiveMessage(out var reply).ShouldBeTrue();
+        var reason = reply.ShouldBeOfType<RejectMessage>().Reason.ShouldNotBeNull();
+        reason.ShouldContain("Version mismatch");
+        reason.ShouldContain("network protocol");
+        host.LastRejection.ShouldBe(reason);
+        guest.IsClosed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void A_guest_without_a_deck_is_turned_away()
+    {
+        using var host = Host();
+        var guest = _listener.Connect();
+        var hello = JsonNode.Parse(NetCodec.Encode(new HelloMessage(
+            NetProtocol.Version, LanRig.Identity.GameVersion, LanRig.Identity.Fingerprint, "Bob", DeckDto.From(Shipped.LastDeck))))
+            .ShouldBeOfType<JsonObject>();
+        hello.Remove(hello.Single(p => p.Key.Equals("deck", StringComparison.OrdinalIgnoreCase)).Key).ShouldBeTrue();
+        guest.Send(hello.ToJsonString());
+
+        host.Poll();
+
+        host.LastRejection.ShouldBe("No deck was sent.");
+    }
+
+    [Fact]
     public void A_guest_with_other_card_data_is_turned_away()
     {
         using var host = Host();
@@ -99,7 +134,7 @@ public sealed class LanHostTests : IDisposable
         var silent = _listener.Connect();
         host.Poll();
 
-        _time.Advance(LanHost.HelloTimeout + TimeSpan.FromSeconds(1));
+        _time.Advance(NetProtocol.HelloTimeout + TimeSpan.FromSeconds(1));
         host.Poll();
 
         silent.IsClosed.ShouldBeTrue();

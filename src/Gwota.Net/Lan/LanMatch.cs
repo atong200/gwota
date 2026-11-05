@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Gwota.Net.Transport;
 
 namespace Gwota.Net.Lan;
@@ -12,6 +14,10 @@ public sealed class LanMatch : IMatchLink
     public const string ConnectionLostReason = "The connection to your opponent was lost.";
     public const string DesyncReason = "The two games went out of sync, so the match was stopped.";
     public const string YouLeftReason = "You left the match.";
+
+    /// <summary>Local ids given to the decks exchanged over the network.</summary>
+    internal const string HostDeckId = "lan_host";
+    internal const string GuestDeckId = "lan_guest";
 
     private readonly IConnection _connection;
     private readonly GameData _data;
@@ -68,18 +74,26 @@ public sealed class LanMatch : IMatchLink
         new(setup.Seed, setup.PlayerName, DeckDto.From(setup.PlayerDeck), setup.OpponentName, DeckDto.From(setup.OpponentDeck));
 
     /// <summary>The setup a start message describes, or the reason it cannot be played with <paramref name="data"/>.</summary>
-    internal static (MatchSetup? Setup, string? Error) SetupFrom(StartMessage start, GameData data)
+    internal static bool TryReadSetup(
+        StartMessage start,
+        GameData data,
+        [NotNullWhen(true)] out MatchSetup? setup,
+        [NotNullWhen(false)] out string? error)
     {
-        var host = start.HostDeck?.ToDefinition("lan_host");
-        var guest = start.GuestDeck?.ToDefinition("lan_guest");
+        var host = start.HostDeck?.ToDefinition(HostDeckId);
+        var guest = start.GuestDeck?.ToDefinition(GuestDeckId);
         if (host is null || guest is null
             || DeckValidator.Validate(host, data.Cards, data.Leaders).Count > 0
             || DeckValidator.Validate(guest, data.Cards, data.Leaders).Count > 0)
         {
-            return (null, "The host sent decks this game cannot play.");
+            setup = null;
+            error = "The host sent decks this game cannot play.";
+            return false;
         }
 
-        return (new MatchSetup(host, guest, start.Seed, start.HostName ?? "Host", start.GuestName ?? "Guest"), null);
+        setup = new MatchSetup(host, guest, start.Seed, start.HostName ?? "Host", start.GuestName ?? "Guest");
+        error = null;
+        return true;
     }
 
     public void Poll()
@@ -162,9 +176,9 @@ public sealed class LanMatch : IMatchLink
 
     private void Drain()
     {
-        while (CloseReason is null && _connection.TryReceive(out var line))
+        while (CloseReason is null && _connection.TryReceiveMessage(out var message))
         {
-            if (NetCodec.Decode(line) is { } message)
+            if (message is not null)
             {
                 Handle(message);
             }
@@ -208,36 +222,17 @@ public sealed class LanMatch : IMatchLink
     {
         switch (message)
         {
-            case CommandMessage { Command: var dto } when IsHost:
-                if (dto?.ToCommand() is { } command && command.Seat == OpponentSeat)
-                {
-                    _pending.Enqueue(new Pending(command, PendingKind.Candidate));
-                }
-                else
-                {
-                    Write(new RefusedMessage("Unreadable command."));
-                }
-
+            case CommandMessage command when IsHost:
+                OnOpponentCommand(command);
                 break;
             case AppliedMessage applied when !IsHost:
-                if (applied.Sequence != ++_sequence || applied.Command?.ToCommand() is not { } relayed)
-                {
-                    Desync();
-                    break;
-                }
-
-                _pending.Enqueue(new Pending(relayed, PendingKind.Sequenced, applied.Checksum));
+                OnApplied(applied);
                 break;
             case RefusedMessage when !IsHost:
                 _awaitingOwn = false;
                 break;
             case RematchMessage:
-                if (Session.IsFinished)
-                {
-                    _remoteRematch = true;
-                    StartRematchIfAgreed();
-                }
-
+                OnRematchRequested();
                 break;
             case StartMessage start when !IsHost:
                 StartGuestRematch(start);
@@ -248,6 +243,41 @@ public sealed class LanMatch : IMatchLink
             case LeaveMessage:
                 OpponentGone(OpponentLeftReason);
                 break;
+            default:
+                Debug.WriteLine($"LAN ({(IsHost ? "host" : "guest")}): ignored unexpected {message.GetType().Name}.");
+                break;
+        }
+    }
+
+    private void OnOpponentCommand(CommandMessage message)
+    {
+        if (message.Command?.ToCommand() is { } command && command.Seat == OpponentSeat)
+        {
+            _pending.Enqueue(new Pending(command, PendingKind.Candidate));
+        }
+        else
+        {
+            Write(new RefusedMessage("Unreadable command."));
+        }
+    }
+
+    private void OnApplied(AppliedMessage applied)
+    {
+        if (applied.Sequence != ++_sequence || applied.Command?.ToCommand() is not { } relayed)
+        {
+            Desync();
+            return;
+        }
+
+        _pending.Enqueue(new Pending(relayed, PendingKind.Sequenced, applied.Checksum));
+    }
+
+    private void OnRematchRequested()
+    {
+        if (Session.IsFinished)
+        {
+            _remoteRematch = true;
+            StartRematchIfAgreed();
         }
     }
 
@@ -271,11 +301,10 @@ public sealed class LanMatch : IMatchLink
             return;
         }
 
-        var (setup, error) = SetupFrom(start, _data);
-        if (setup is null)
+        if (!TryReadSetup(start, _data, out var setup, out var error))
         {
             Write(new LeaveMessage(LeaveReason.Quit));
-            Close(error!);
+            Close(error);
             return;
         }
 
@@ -334,7 +363,7 @@ public sealed class LanMatch : IMatchLink
     {
         if (!_connection.IsClosed)
         {
-            _connection.Send(NetCodec.Encode(message));
+            _connection.Send(message);
         }
     }
 

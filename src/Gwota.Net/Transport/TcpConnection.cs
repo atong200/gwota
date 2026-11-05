@@ -2,29 +2,35 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Channels;
 
 namespace Gwota.Net.Transport;
 
 /// <summary>
-/// Newline-framed UTF-8 over TCP. An empty line is a heartbeat, sent when nothing else went out for a while; the
-/// connection closes when nothing at all arrives within the timeout.
+/// Newline-framed UTF-8 over TCP. Sent lines are queued and written by one background writer; closing writes what is
+/// still queued (bounded by <see cref="NetProtocol.CloseFlushTimeout"/>) before shutting the socket down. An empty line
+/// is a heartbeat, sent when nothing else went out for a while; the connection closes when nothing at all arrives
+/// within the timeout.
 /// </summary>
 public sealed class TcpConnection : IConnection
 {
-    public const int MaxLineLength = 64 * 1024;
+    private const int InitialBufferSize = 4096;
+    private const byte Newline = (byte)'\n';
 
     private static readonly UTF8Encoding Utf8 = new(false);
 
     private readonly TcpClient _client;
     private readonly NetworkStream _stream;
     private readonly ConcurrentQueue<string> _inbox = new();
-    private readonly Lock _writeLock = new();
+    private readonly Channel<string> _outbox = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly Lock _closeLock = new();
     private readonly CancellationTokenSource _stop = new();
+    private readonly CancellationTokenSource _flushDeadline = new();
     private readonly TimeSpan _heartbeat;
     private readonly TimeSpan _timeout;
     private readonly TimeProvider _time;
     private long _lastReceived;
-    private long _lastSent;
+    private long _lastQueued;
     private volatile string? _closeReason;
 
     private TcpConnection(TcpClient client, TimeSpan heartbeat, TimeSpan timeout, TimeProvider time)
@@ -35,48 +41,40 @@ public sealed class TcpConnection : IConnection
         _heartbeat = heartbeat;
         _timeout = timeout;
         _time = time;
-        _lastReceived = _lastSent = time.GetTimestamp();
+        _lastReceived = _lastQueued = time.GetTimestamp();
         _ = Task.Run(ReadLoopAsync);
-        _ = Task.Run(HeartbeatLoopAsync);
+        _ = Task.Run(WriteLoopAsync);
+        _ = Task.Run(() => WatchLoopAsync(_stop.Token));
     }
 
-    public static TimeSpan DefaultHeartbeat { get; } = TimeSpan.FromSeconds(2);
+    public bool IsClosed => _closeReason is not null;
 
-    public static TimeSpan DefaultTimeout { get; } = TimeSpan.FromSeconds(10);
-
-    public bool IsClosed
-    {
-        get
-        {
-            if (_closeReason is null && _time.GetElapsedTime(Interlocked.Read(ref _lastReceived)) > _timeout)
-            {
-                Close("The connection timed out.");
-            }
-
-            return _closeReason is not null;
-        }
-    }
-
-    public string? CloseReason => IsClosed ? _closeReason : null;
+    public string? CloseReason => _closeReason;
 
     public EndPoint? RemoteEndPoint => _client.Client.RemoteEndPoint;
 
     public static TcpConnection Wrap(TcpClient client, TimeSpan? heartbeat = null, TimeSpan? timeout = null, TimeProvider? time = null)
     {
         ArgumentNullException.ThrowIfNull(client);
-        return new(client, heartbeat ?? DefaultHeartbeat, timeout ?? DefaultTimeout, time ?? TimeProvider.System);
+        return new(client, heartbeat ?? NetProtocol.Heartbeat, timeout ?? NetProtocol.ReceiveTimeout, time ?? TimeProvider.System);
     }
 
     /// <summary>Connects to a host, failing after <paramref name="connectTimeout"/>.</summary>
-    public static async Task<TcpConnection> ConnectAsync(string host, int port, TimeSpan connectTimeout, CancellationToken cancellation = default)
+    public static async Task<TcpConnection> ConnectAsync(
+        string host,
+        int port,
+        TimeSpan connectTimeout,
+        TimeProvider? time = null,
+        CancellationToken cancellation = default)
     {
+        time ??= TimeProvider.System;
         var client = new TcpClient();
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-            timeout.CancelAfter(connectTimeout);
-            await client.ConnectAsync(host, port, timeout.Token).ConfigureAwait(false);
-            return Wrap(client);
+            using var timeout = new CancellationTokenSource(connectTimeout, time);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token);
+            await client.ConnectAsync(host, port, linked.Token).ConfigureAwait(false);
+            return Wrap(client, time: time);
         }
         catch
         {
@@ -93,22 +91,74 @@ public sealed class TcpConnection : IConnection
             throw new ArgumentException("A line cannot contain a newline.", nameof(line));
         }
 
-        Write(line);
+        Enqueue(line);
     }
 
     public bool TryReceive(out string line) => _inbox.TryDequeue(out line!);
 
     public void Close(string reason)
     {
-        if (Interlocked.CompareExchange(ref _closeReason, reason, null) is not null)
+        lock (_closeLock)
         {
-            return;
-        }
+            if (_closeReason is not null)
+            {
+                return;
+            }
 
-        _stop.Cancel();
+            _closeReason = reason;
+            _stop.Cancel();
+            _flushDeadline.CancelAfter(NetProtocol.CloseFlushTimeout);
+            _outbox.Writer.TryComplete();
+        }
+    }
+
+    /// <summary>Closes; the socket is released once the queued lines are written or the flush times out.</summary>
+    public void Dispose() => Close("Closed.");
+
+    private void Enqueue(string line)
+    {
+        if (_closeReason is null && _outbox.Writer.TryWrite(line))
+        {
+            Interlocked.Exchange(ref _lastQueued, _time.GetTimestamp());
+        }
+    }
+
+    /// <summary>The only writer to the socket. It ends once closing has written (or given up on) the queue.</summary>
+    private async Task WriteLoopAsync()
+    {
+        var deadline = _flushDeadline.Token;
+        var buffer = new byte[InitialBufferSize];
         try
         {
-            // A graceful shutdown lets lines already written (such as a goodbye) reach the other side.
+            await foreach (var line in _outbox.Reader.ReadAllAsync(deadline).ConfigureAwait(false))
+            {
+                var needed = Utf8.GetMaxByteCount(line.Length) + 1;
+                if (buffer.Length < needed)
+                {
+                    buffer = new byte[Math.Max(needed, buffer.Length * 2)];
+                }
+
+                var length = Utf8.GetBytes(line, buffer);
+                buffer[length] = Newline;
+                await _stream.WriteAsync(buffer.AsMemory(0, length + 1), deadline).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or SocketException or OperationCanceledException)
+        {
+            Close("The connection was lost.");
+        }
+        finally
+        {
+            Release();
+        }
+    }
+
+    private void Release()
+    {
+        Close("The connection was lost.");
+        try
+        {
+            // A graceful shutdown lets the lines just written reach the other side before it sees the close.
             _client.Client.Shutdown(SocketShutdown.Send);
         }
         catch (Exception ex) when (ex is SocketException or ObjectDisposedException)
@@ -116,45 +166,28 @@ public sealed class TcpConnection : IConnection
         }
 
         _client.Dispose();
-    }
-
-    public void Dispose()
-    {
-        Close("Closed.");
-        _stop.Dispose();
-    }
-
-    private void Write(string line)
-    {
-        if (_closeReason is not null)
+        lock (_closeLock)
         {
-            return;
-        }
-
-        var bytes = Utf8.GetBytes(line + "\n");
-        try
-        {
-            lock (_writeLock)
-            {
-                _stream.Write(bytes);
-                Interlocked.Exchange(ref _lastSent, _time.GetTimestamp());
-            }
-        }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException or SocketException)
-        {
-            Close("The connection was lost.");
+            _stop.Dispose();
+            _flushDeadline.Dispose();
         }
     }
 
+    /// <summary>Splits incoming bytes into lines; it ends when the socket is released or the other side closes.</summary>
     private async Task ReadLoopAsync()
     {
-        var buffer = new byte[4096];
-        var line = new List<byte>();
+        var buffer = new byte[InitialBufferSize];
+        var filled = 0;
         try
         {
-            while (!_stop.IsCancellationRequested)
+            while (true)
             {
-                var read = await _stream.ReadAsync(buffer, _stop.Token).ConfigureAwait(false);
+                if (filled == buffer.Length)
+                {
+                    Array.Resize(ref buffer, Math.Min(buffer.Length * 2, NetProtocol.MaxLineLength + 1));
+                }
+
+                var read = await _stream.ReadAsync(buffer.AsMemory(filled)).ConfigureAwait(false);
                 if (read == 0)
                 {
                     Close("The other side closed the connection.");
@@ -162,44 +195,60 @@ public sealed class TcpConnection : IConnection
                 }
 
                 Interlocked.Exchange(ref _lastReceived, _time.GetTimestamp());
-                for (var i = 0; i < read; i++)
+                var scanned = filled;
+                filled += read;
+                var start = 0;
+                int newline;
+                while ((newline = buffer.AsSpan(scanned, filled - scanned).IndexOf(Newline)) >= 0)
                 {
-                    if (buffer[i] != (byte)'\n')
+                    var end = scanned + newline;
+                    if (end - start > NetProtocol.MaxLineLength)
                     {
-                        line.Add(buffer[i]);
-                        if (line.Count > MaxLineLength)
-                        {
-                            Close("The other side sent an oversized message.");
-                            return;
-                        }
-
-                        continue;
+                        break;
                     }
 
-                    if (line.Count > 0)
+                    if (end > start)
                     {
-                        _inbox.Enqueue(Utf8.GetString([.. line]));
-                        line.Clear();
+                        _inbox.Enqueue(Utf8.GetString(buffer, start, end - start));
                     }
+
+                    start = scanned = end + 1;
                 }
+
+                if (filled - start > NetProtocol.MaxLineLength)
+                {
+                    Close("The other side sent an oversized message.");
+                    return;
+                }
+
+                buffer.AsSpan(start, filled - start).CopyTo(buffer);
+                filled -= start;
             }
         }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException or SocketException or OperationCanceledException)
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or SocketException or InvalidOperationException)
         {
             Close("The connection was lost.");
         }
     }
 
-    private async Task HeartbeatLoopAsync()
+    /// <summary>Sends heartbeats and closes the connection when the other side went quiet.</summary>
+    private async Task WatchLoopAsync(CancellationToken stop)
     {
+        var tick = (_heartbeat < _timeout ? _heartbeat : _timeout) / 4;
         try
         {
-            while (!_stop.IsCancellationRequested)
+            while (!stop.IsCancellationRequested)
             {
-                await Task.Delay(_heartbeat / 4, _time, _stop.Token).ConfigureAwait(false);
-                if (_time.GetElapsedTime(Interlocked.Read(ref _lastSent)) >= _heartbeat)
+                await Task.Delay(tick, _time, stop).ConfigureAwait(false);
+                if (_time.GetElapsedTime(Interlocked.Read(ref _lastReceived)) > _timeout)
                 {
-                    Write(string.Empty);
+                    Close("The connection timed out.");
+                    return;
+                }
+
+                if (_time.GetElapsedTime(Interlocked.Read(ref _lastQueued)) >= _heartbeat)
+                {
+                    Enqueue(string.Empty);
                 }
             }
         }
@@ -214,16 +263,18 @@ public sealed class TcpConnection : IConnection
 public sealed class TcpConnectionListener : IConnectionListener
 {
     private readonly TcpListener _listener;
+    private readonly TimeProvider? _time;
 
-    public TcpConnectionListener(int port, IPAddress? address = null)
+    public TcpConnectionListener(int port, IPAddress? address = null, TimeProvider? time = null)
     {
         _listener = new TcpListener(address ?? IPAddress.Any, port);
+        _time = time;
         _listener.Start();
     }
 
     public int Port => ((IPEndPoint)_listener.LocalEndpoint).Port;
 
-    public IConnection? TryAccept() => _listener.Pending() ? TcpConnection.Wrap(_listener.AcceptTcpClient()) : null;
+    public IConnection? TryAccept() => _listener.Pending() ? TcpConnection.Wrap(_listener.AcceptTcpClient(), time: _time) : null;
 
     public void Dispose() => _listener.Stop();
 }

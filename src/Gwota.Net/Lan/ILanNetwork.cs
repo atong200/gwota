@@ -21,14 +21,12 @@ public interface ILanNetwork
 /// <summary>TCP for the game connection, UDP broadcast for announcements.</summary>
 public sealed class TcpLanNetwork : ILanNetwork
 {
-    public static TimeSpan ConnectTimeout { get; } = TimeSpan.FromSeconds(6);
-
     public IConnectionListener Listen(int port) => new TcpConnectionListener(port);
 
     public async Task<IConnection> ConnectAsync(LanAddress address, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(address);
-        return await TcpConnection.ConnectAsync(address.Host, address.Port, ConnectTimeout, cancellation).ConfigureAwait(false);
+        return await TcpConnection.ConnectAsync(address.Host, address.Port, NetProtocol.ConnectTimeout, cancellation: cancellation).ConfigureAwait(false);
     }
 
     public ILanAnnouncer Announce(LanBeacon beacon) => new LanBroadcaster(beacon);

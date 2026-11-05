@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Gwota.Net.Discovery;
+using Gwota.Net.Tests.Support;
 
 namespace Gwota.Net.Tests.Discovery;
 
@@ -15,13 +16,12 @@ public class LanDiscoveryTests
         using var broadcaster = new LanBroadcaster(new LanBeacon("host-1", "Room", "Alice", 7777, NetProtocol.Version, "1.0"), port);
         listener.IsListening.ShouldBeTrue();
 
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (directory.Games.Count == 0 && DateTime.UtcNow < deadline)
+        await Eventually.True(() =>
         {
             broadcaster.Poll();
             listener.Poll();
-            await Task.Delay(20, TestContext.Current.CancellationToken);
-        }
+            return directory.Games.Count > 0;
+        });
 
         directory.Games.Single().Beacon.HostName.ShouldBe("Alice");
     }

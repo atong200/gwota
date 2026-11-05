@@ -182,7 +182,11 @@ public sealed class LanLobby : IDisposable
 
     private void PollHosting()
     {
-        var host = _host!;
+        if (_host is not { } host)
+        {
+            return;
+        }
+
         _announcer?.Poll();
         host.Poll();
         if (host.LastRejection is { } rejection && !ReferenceEquals(rejection, _seenRejection))
@@ -202,13 +206,18 @@ public sealed class LanLobby : IDisposable
         if (_connecting is { IsCompleted: true } connecting)
         {
             _connecting = null;
+            if (JoinTarget is not { } target || _joiner is not { } joiner)
+            {
+                throw new InvalidOperationException("A connection finished without a join in progress.");
+            }
+
             if (!connecting.IsCompletedSuccessfully)
             {
-                Fail(ConnectError(connecting, JoinTarget!));
+                Fail(ConnectError(connecting, target));
                 return;
             }
 
-            _guest = new LanGuest(connecting.Result, _data, _identity, _joiner!);
+            _guest = new LanGuest(connecting.Result, _data, _identity, joiner);
         }
 
         if (_guest is null)
@@ -256,9 +265,20 @@ public sealed class LanLobby : IDisposable
         {
             _cancelConnect?.Cancel();
             pending.ContinueWith(
-                task => task.Result.Dispose(),
+                static task =>
+                {
+                    if (task.IsCompletedSuccessfully)
+                    {
+                        task.Result.Dispose();
+                    }
+                    else
+                    {
+                        // Observed so a failed or cancelled attempt is not reported as unobserved.
+                        _ = task.Exception;
+                    }
+                },
                 CancellationToken.None,
-                TaskContinuationOptions.OnlyOnRanToCompletion,
+                TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
             _connecting = null;
         }

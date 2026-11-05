@@ -10,7 +10,7 @@ public interface ILanAnnouncer : IDisposable
     void Poll();
 }
 
-/// <summary>Announces a hosted game once per <see cref="Interval"/> while it is polled.</summary>
+/// <summary>Announces a hosted game once per <see cref="NetProtocol.BeaconInterval"/> while it is polled.</summary>
 public sealed class LanBroadcaster : ILanAnnouncer
 {
     private readonly UdpClient _udp;
@@ -30,11 +30,9 @@ public sealed class LanBroadcaster : ILanAnnouncer
         _targets = [.. LocalNetwork.BroadcastAddresses(), IPAddress.Broadcast, IPAddress.Loopback];
     }
 
-    public static TimeSpan Interval { get; } = TimeSpan.FromSeconds(1);
-
     public void Poll()
     {
-        if (_lastSent is { } last && _time.GetElapsedTime(last) < Interval)
+        if (_lastSent is { } last && _time.GetElapsedTime(last) < NetProtocol.BeaconInterval)
         {
             return;
         }

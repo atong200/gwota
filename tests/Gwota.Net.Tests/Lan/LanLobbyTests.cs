@@ -288,7 +288,7 @@ public sealed class LanLobbyTests : IDisposable
     }
 
     [Fact]
-    public void Cancelling_a_join_stops_connecting_and_closes_a_late_connection()
+    public async Task Cancelling_a_join_stops_connecting_and_closes_a_late_connection()
     {
         _network.HoldConnects = true;
         var lobby = Lobby();
@@ -302,7 +302,23 @@ public sealed class LanLobbyTests : IDisposable
         token.IsCancellationRequested.ShouldBeTrue();
         var (late, _) = InMemoryConnection.CreatePair();
         _network.PendingConnect.ShouldNotBeNull().SetResult(late);
-        SpinWait.SpinUntil(() => late.IsClosed, TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        await Eventually.True(() => late.IsClosed);
+    }
+
+    [Fact]
+    public void Cancelling_a_join_whose_connect_then_fails_stays_browsing()
+    {
+        _network.HoldConnects = true;
+        var lobby = Lobby();
+        lobby.Join(Local, Player("Bob"));
+        var pending = _network.PendingConnect.ShouldNotBeNull();
+
+        lobby.Cancel();
+        pending.SetException(new SocketException((int)SocketError.ConnectionRefused));
+        lobby.Poll();
+
+        lobby.State.ShouldBe(LanLobbyState.Browsing);
+        lobby.Error.ShouldBeNull();
     }
 
     [Fact]

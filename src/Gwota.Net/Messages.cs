@@ -16,7 +16,10 @@ public abstract record NetMessage;
 /// <summary>Guest to host: who is joining and with which deck.</summary>
 public sealed record HelloMessage(int Protocol, string GameVersion, string Fingerprint, string Name, DeckDto Deck) : NetMessage;
 
-/// <summary>Host to guest: the join was refused.</summary>
+/// <summary>
+/// Host to guest: the join was refused. Its shape is frozen across protocol versions so that a guest on an older
+/// build can still read why it was turned away.
+/// </summary>
 public sealed record RejectMessage(string Reason) : NetMessage;
 
 /// <summary>Host to guest: a match begins. The host sits in <see cref="Seat.One"/>.</summary>

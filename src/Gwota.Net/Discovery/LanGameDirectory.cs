@@ -20,8 +20,6 @@ public sealed class LanGameDirectory
         _time = time ?? TimeProvider.System;
     }
 
-    public static TimeSpan Expiry { get; } = TimeSpan.FromSeconds(3);
-
     /// <summary>Beacons from this instance id are ignored (the game's own broadcast).</summary>
     public string? OwnInstanceId { get; set; }
 
@@ -65,7 +63,7 @@ public sealed class LanGameDirectory
     /// <summary>Drops expired games; returns true when any was removed.</summary>
     public bool Prune()
     {
-        var expired = _games.Where(e => _time.GetElapsedTime(e.Value.SeenAt) > Expiry).Select(e => e.Key).ToList();
+        var expired = _games.Where(e => _time.GetElapsedTime(e.Value.SeenAt) > NetProtocol.BeaconExpiry).Select(e => e.Key).ToList();
         foreach (var id in expired)
         {
             _games.Remove(id);

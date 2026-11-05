@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Gwota.Net.Transport;
 
 namespace Gwota.Net.Lan;
@@ -8,8 +9,6 @@ namespace Gwota.Net.Lan;
 /// </summary>
 public sealed class LanHost : IDisposable
 {
-    public static TimeSpan HelloTimeout { get; } = TimeSpan.FromSeconds(5);
-
     private readonly IConnectionListener _listener;
     private readonly GameData _data;
     private readonly LanIdentity _identity;
@@ -67,7 +66,7 @@ public sealed class LanHost : IDisposable
                 _joining.RemoveAt(i);
                 Admit(connection, hello);
             }
-            else if (connection.IsClosed || _time.GetElapsedTime(since) > HelloTimeout)
+            else if (connection.IsClosed || _time.GetElapsedTime(since) > NetProtocol.HelloTimeout)
             {
                 _joining.RemoveAt(i);
                 connection.Close("No hello received.");
@@ -92,33 +91,42 @@ public sealed class LanHost : IDisposable
         StopListening();
     }
 
-    /// <summary>The reason a guest cannot join, or null when it can.</summary>
-    internal string? Check(HelloMessage hello)
+    /// <summary>The guest's deck when it can join; otherwise why it cannot.</summary>
+    private bool CanJoin(HelloMessage hello, [NotNullWhen(true)] out DeckDefinition? deck, [NotNullWhen(false)] out string? rejection)
     {
-        if (hello.Protocol != NetProtocol.Version || hello.GameVersion != _identity.GameVersion)
+        deck = null;
+        rejection = hello switch
         {
-            return $"Version mismatch: the host runs {_identity.GameVersion}, you run {hello.GameVersion}.";
+            { Protocol: var protocol } when protocol != NetProtocol.Version =>
+                $"Version mismatch: the host uses network protocol {NetProtocol.Version}, you use {protocol}. Both players need the same build.",
+            { GameVersion: var version } when version != _identity.GameVersion =>
+                $"Version mismatch: the host runs {_identity.GameVersion}, you run {version}.",
+            { Fingerprint: var fingerprint } when fingerprint != _identity.Fingerprint =>
+                "Your card data differs from the host's. Both players need the same build.",
+            _ => null,
+        };
+        if (rejection is not null || hello.Deck is not { } sent)
+        {
+            rejection ??= "No deck was sent.";
+            return false;
         }
 
-        if (hello.Fingerprint != _identity.Fingerprint)
+        deck = sent.ToDefinition(LanMatch.GuestDeckId);
+        var problems = DeckValidator.Validate(deck, _data.Cards, _data.Leaders);
+        if (problems.Count > 0)
         {
-            return "Your card data differs from the host's. Both players need the same build.";
+            rejection = $"Your deck cannot be played: {problems[0]}";
+            return false;
         }
 
-        if (hello.Deck is null)
-        {
-            return "No deck was sent.";
-        }
-
-        var problems = DeckValidator.Validate(hello.Deck.ToDefinition("lan_guest"), _data.Cards, _data.Leaders);
-        return problems.Count > 0 ? $"Your deck cannot be played: {problems[0]}" : null;
+        return true;
     }
 
     private static HelloMessage? TryReadHello(IConnection connection)
     {
-        while (connection.TryReceive(out var line))
+        while (connection.TryReceiveMessage(out var message))
         {
-            if (NetCodec.Decode(line) is HelloMessage hello)
+            if (message is HelloMessage hello)
             {
                 return hello;
             }
@@ -129,21 +137,15 @@ public sealed class LanHost : IDisposable
 
     private void Admit(IConnection connection, HelloMessage hello)
     {
-        if (Check(hello) is { } reason)
+        if (!CanJoin(hello, out var guestDeck, out var rejection))
         {
-            LastRejection = reason;
-            connection.Send(NetCodec.Encode(new RejectMessage(reason)));
-            connection.Close(reason);
+            LastRejection = rejection;
+            connection.SendAndClose(new RejectMessage(rejection), rejection);
             return;
         }
 
-        var setup = new MatchSetup(
-            _host.Deck,
-            hello.Deck.ToDefinition("lan_guest"),
-            _seeds(),
-            _host.Name,
-            ProfileSettings.NormalizeUsername(hello.Name));
-        connection.Send(NetCodec.Encode(LanMatch.StartFor(setup)));
+        var setup = new MatchSetup(_host.Deck, guestDeck, _seeds(), _host.Name, ProfileSettings.NormalizeUsername(hello.Name));
+        connection.Send(LanMatch.StartFor(setup));
         Match = LanMatch.Host(connection, _data, setup, _seeds);
     }
 
@@ -152,8 +154,7 @@ public sealed class LanHost : IDisposable
         _listener.Dispose();
         foreach (var (connection, _) in _joining)
         {
-            connection.Send(NetCodec.Encode(new RejectMessage("The host is no longer waiting for players.")));
-            connection.Close("Host stopped.");
+            connection.SendAndClose(new RejectMessage("The host is no longer waiting for players."), "Host stopped.");
         }
 
         _joining.Clear();
