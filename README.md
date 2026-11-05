@@ -1,20 +1,21 @@
 # gwota
 
 A card game heavily inspired by GWENT from The Witcher 3, Dota 2 themed.
-Two factions from Dota lore, the Realms of Men and The Seven Hells, fight offline against an AI.
+Three factions from Dota lore, the United Realms, the Abyssal Legion and the Wild Horde, fight against an AI or another player on the local network.
 
 ## Rules in a nutshell
 
 The rules are classic Witcher 3 Gwent.
 
 - A match is best of three rounds. Each player has 2 gems and loses one per round lost; a tie costs both players a gem.
-- Each player draws 10 cards. In the **draft phase**, before the first round, you select up to 2 of them (click to select, click again to deselect) and confirm to redraw them. Cards are rarely drawn after that, so card advantage is the core of the game.
+- Each player draws 10 cards. In the **draft phase**, before the first round, you select up to 2 of them (click to select, click again to deselect) and confirm to redraw them. Cards are rarely drawn after that, so card advantage is the core of the game. A hand holds at most 20 cards: further draws stay in the deck, and a leader that returns a card to the hand cannot be used with a full hand.
 - On your turn you play a card, use your leader once per match, or pass the round. Once you pass, you are out for the rest of the round.
 - Units go on the melee, ranged or siege row, and the higher total strength wins the round.
-- Abilities: spy, medic, muster, tight bond, morale boost, horn and row scorch. Special cards: horn, scorch, decoy, weather and clear weather.
+- Abilities: spy, medic, muster, tight bond, morale boost, horn, scorch (same as the scorch special, on the whole board) and concord (both players draw cards). Special cards: horn, scorch, decoy, weather and clear weather.
 - Faction perks:
-  - **Realms of Men**: draw a card after winning a round.
-  - **The Seven Hells**: one random unit stays on the board after each round.
+  - **United Realms**: draw a card after winning a round.
+  - **Abyssal Legion**: one random unit stays on the board after each round.
+  - **Wild Horde**: win the round when the scores are tied (a Horde mirror tie is still a draw).
 
 ## Prerequisites
 
@@ -36,16 +37,16 @@ $godot = "C:\Program Files\Godot\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_
 In the game:
 
 - **Main menu**: Play (Computer lets you pick one of your decks; Player versus player offers Local network, and Online, which is coming soon), Decks, Options, Quit. Escape goes back one page.
-- **Decks**: the card "book" fills the left side (Realms / Hells / Neutral bookmark tabs on a tinted page, row filters, 10 cards per page, mouse wheel or arrows to turn pages); each card shows how many copies are available ("x3", with stacked copies behind it). Your decks are listed on the right. Click a deck (or New deck, which asks for its faction; it cannot be changed later) to edit it: the right pane then shows the deck (leader portrait, click to change it; name with rename and delete buttons; faction and READY / INCOMPLETE status; unit and special counts; cards grouped by row) and the book narrows to the deck's faction and Neutral, counting the copies you can still add. Click a book card to add a copy, click a deck entry to remove one. Done, Back or Escape closes the deck; once more returns to the main menu. Changes save immediately; at least one deck must remain. Incomplete decks are allowed but tagged and cannot be played; hover the tag to see what is missing.
+- **Decks**: the card "book" fills the left side (Realms / Abyss / Horde / Neutral bookmark tabs on a tinted page, row filters, 10 cards per page, mouse wheel or arrows to turn pages); each card shows how many copies are available ("x3", with stacked copies behind it). Your decks are listed on the right. Click a deck to edit it, or New deck: pick a faction on the left (its perk and lore are shown; it cannot be changed later), then click one of its leaders on the right (each shows its ability) to create the deck. The right pane then shows the deck (leader portrait, click to change the leader in the same dialog; name with rename and delete buttons; faction tag, hover it for the faction perk, and READY / INCOMPLETE status; unit and special counts; cards grouped by row) and the book narrows to the deck's faction and Neutral, counting the copies you can still add. Click a book card to add a copy, click a deck entry to remove one. Done, Back or Escape closes the deck; once more returns to the main menu. Changes save immediately; at least one deck must remain. Incomplete decks are allowed but tagged and cannot be played; hover the tag to see what is missing.
   - Decks are saved to `user://decks.json` (`%APPDATA%\Godot\app_userdata\Gwota\decks.json` on Windows). On first launch it is seeded with the shipped decks. If the file is unreadable, it is copied to `decks.json.bak` and the defaults are restored.
   - The computer opponent always plays the shipped decks from `game/data/decks`.
-  - Decks saved before the faction rename (Radiant / Dire) are migrated on load: factions, leaders and renamed cards keep their place, and retired cards are dropped.
+  - Older saved decks are migrated on load: renamed factions (Radiant / Dire, then Hells to Abyss), leaders and cards keep their place, and retired cards are dropped. Saves made before the Horde existed also receive its starter deck.
 - **Options**: tabbed settings (Sound: master volume; Gameplay: animation speed Normal / Fast / Off; Profile: username, `Player` by default). The LAN room name and port are saved there too. Settings are saved to `user://settings.json`, which on Windows is `%APPDATA%\Godot\app_userdata\Gwota\settings.json`.
 - **In a match**:
   - Hover any card (hand, board, draft) to see its details next to the cursor. A card shows its strength in the top-left medallion (white for regular cards, gold for heroes, green or red when boosted or weakened) and its row as an icon: sword (melee), bow (ranged), catapult (siege). Heroes have a gold frame.
   - Cards move on the board: played cards fly from the hand, drawn cards come from the draw pile, and destroyed or end-of-round cards go to the discard pile. The opponent's cards are revealed briefly. Set the speed (or turn it off) in Options > Gameplay.
   - The medallion next to each player's name is their total strength (gold while leading); each row shows its own total. The red crystals are round lives: you lose one for each lost round (both players lose one on a draw), and losing both loses the match.
-  - Click a card in your hand to select it; the places it can go light up. Click a highlighted row (or card, for a decoy) to play it. Weather, scorch and similar cards accept a click anywhere on the board. Right-click or Escape cancels the selection.
+  - Click a card in your hand to select it; the places it can go light up. Click a highlighted row (or card, for a decoy) to play it. Weather, scorch and clear weather accept a click anywhere on the board; the highlight shows what they affect (scorch: every row; weather: its rows on both sides and the weather lane; clear weather: the weather lane). Right-click or Escape cancels the selection.
   - **Pass round** ends your participation in the current round.
   - Your draw and discard piles sit in the left column (the opponent's at the top, yours at the bottom); hover a pile for its exact count. Hover the opponent's hand to enlarge it and see how many cards it holds.
   - The computer opponent is a `BOT <name>`, with a random name per match.
@@ -100,7 +101,7 @@ tests/Gwota.Core.Tests/ unit tests (xunit v3 + Shouldly)
 tests/Gwota.Net.Tests/  network tests
 game/                   Godot project (UI only; references Gwota.Core)
   data/                 cards, leaders, decks as JSON (+ schemas)
-  assets/               optional art, resolved by id
+  assets/               optional art, resolved by id (card art per faction folder)
   scripts/              Godot C# scripts
 docs/                   documentation
 ```
