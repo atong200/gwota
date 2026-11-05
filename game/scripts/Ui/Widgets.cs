@@ -48,16 +48,21 @@ public static class Widgets
 
     /// <summary>
     /// A small bold badge such as "READY": <paramref name="color"/> text and border over a faint fill.
-    /// Its tooltip works (the tag stops the mouse).
+    /// Its tooltip works (the tag stops the mouse); <paramref name="richTooltip"/>, when set, replaces the plain one.
     /// </summary>
-    public static PanelContainer Tag(string text, Color color, string tooltip = "", int size = 15)
+    public static PanelContainer Tag(string text, Color color, string tooltip = "", int size = 15, Func<Control>? richTooltip = null)
     {
         var label = Label(text, size, color);
         label.AddThemeFontOverride("font", Fonts.Bold);
-        var tag = Panel(label, Box(new Color(color, 0.14f), color, 1, radius: 4, margin: 4));
-        tag.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        tag.MouseFilter = Control.MouseFilterEnum.Stop;
-        tag.TooltipText = tooltip;
+        var tag = new RichTooltipPanel
+        {
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            TooltipText = tooltip,
+            TooltipContent = richTooltip,
+        };
+        tag.AddThemeStyleboxOverride("panel", Box(new Color(color, 0.14f), color, 1, radius: 4, margin: 4));
+        tag.AddChild(label);
         return tag;
     }
 
@@ -89,6 +94,65 @@ public static class Widgets
         MouseFilter = Control.MouseFilterEnum.Ignore,
     };
 
+    /// <summary>Sets the space a box container leaves between its children.</summary>
+    public static T WithGap<T>(this T box, int gap)
+        where T : BoxContainer
+    {
+        box.AddThemeConstantOverride("separation", gap);
+        return box;
+    }
+
+    /// <summary>
+    /// Wraps <paramref name="content"/> in a <see cref="MarginContainer"/>; with <paramref name="fillParent"/> it is
+    /// anchored to fill a non-container parent.
+    /// </summary>
+    public static MarginContainer Margins(Control content, int left, int top, int right, int bottom, bool fillParent = true)
+    {
+        var margin = new MarginContainer();
+        if (fillParent)
+        {
+            margin.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        }
+
+        margin.AddThemeConstantOverride("margin_left", left);
+        margin.AddThemeConstantOverride("margin_top", top);
+        margin.AddThemeConstantOverride("margin_right", right);
+        margin.AddThemeConstantOverride("margin_bottom", bottom);
+        margin.AddChild(content);
+        return margin;
+    }
+
+    public static MarginContainer Margins(Control content, int all) => Margins(content, all, all, all, all);
+
+    /// <summary>
+    /// Makes <paramref name="wanted"/> the children of <paramref name="parent"/>, in order. Other children are detached
+    /// but not freed (their owner frees them); children already in place stay in the tree, so their hover is kept.
+    /// </summary>
+    public static void SyncChildren(this Node parent, IReadOnlyList<Node> wanted)
+    {
+        ArgumentNullException.ThrowIfNull(wanted);
+
+        var keep = wanted.ToHashSet();
+        foreach (var child in parent.GetChildren())
+        {
+            if (!keep.Contains(child))
+            {
+                parent.RemoveChild(child);
+            }
+        }
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var node = wanted[i];
+            if (node.GetParent() != parent)
+            {
+                node.GetParent()?.RemoveChild(node);
+                parent.AddChild(node);
+            }
+
+            parent.MoveChild(node, i);
+        }
+    }
 
     /// <summary>Detaches then frees every child, so containers re-layout immediately.</summary>
     public static void ClearChildren(this Node node)

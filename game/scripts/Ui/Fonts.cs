@@ -87,6 +87,19 @@ public static class Fonts
         return control.WithDisplayFont(size);
     }
 
+    /// <summary>The largest size from <paramref name="size"/> down to <paramref name="minSize"/> at which one line of <paramref name="text"/> fits <paramref name="width"/>.</summary>
+    public static int FittingSize(Font font, string text, int size, float width, int minSize)
+    {
+        ArgumentNullException.ThrowIfNull(font);
+
+        while (size > minSize && font.GetStringSize(text, fontSize: size).X > width)
+        {
+            size--;
+        }
+
+        return size;
+    }
+
     /// <summary>
     /// Loads a body style with lining figures: Alegreya defaults to old-style digits, which bob up and down in
     /// counters and scores.
