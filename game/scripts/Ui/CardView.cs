@@ -21,8 +21,8 @@ public enum CardHighlight
 /// </summary>
 public sealed partial class CardView : PanelContainer
 {
-    public static readonly Vector2 HandSize = new(86, 122);
-    public static readonly Vector2 BoardSize = new(64, 90);
+    public static readonly Vector2 HandSize = OfHeight(122);
+    public static readonly Vector2 BoardSize = OfHeight(90);
 
     private readonly StyleBoxFlat _frame;
     private readonly float _scale;
@@ -45,7 +45,7 @@ public sealed partial class CardView : PanelContainer
         ApplyFrame(CardHighlight.None);
         AddThemeStyleboxOverride("panel", _frame);
 
-        AddChild(CardFace.Art(CardArt.ForCard(definition.Id), definition.Name, Px(28, min: 16)));
+        AddChild(CardFace.Art(CardArt.ForCard(card), definition.Name, Px(28, min: 16)));
 
         var overlay = new Control { MouseFilter = MouseFilterEnum.Ignore };
         overlay.AddChild(Badge(definition, currentStrength));
@@ -71,6 +71,9 @@ public sealed partial class CardView : PanelContainer
     public event Action<CardView>? Unhovered;
 
     public CardInstance Card { get; }
+
+    /// <summary>A card-face size of the given height at the shared card aspect (see <see cref="BookLayout.CardAspect"/>).</summary>
+    public static Vector2 OfHeight(float height) => new(MathF.Round(height * BookLayout.CardAspect), height);
 
     /// <summary>The strength displayed on the badge (null shows the base strength).</summary>
     public int? CurrentStrength { get; }
@@ -193,8 +196,7 @@ public sealed partial class CardView : PanelContainer
     /// <summary>The playable rows' icons on a dark pill, in the bottom-right corner just above the name banner.</summary>
     private PanelContainer RowIcons(CardDefinition definition, bool aboveBanner)
     {
-        var icons = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        icons.AddThemeConstantOverride("separation", Px(1));
+        var icons = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore }.WithGap(Px(1));
         foreach (var row in definition.Rows)
         {
             icons.AddChild(Icons.Rect(Icons.ForRow(row), Px(13, min: 9), Palette.Text));

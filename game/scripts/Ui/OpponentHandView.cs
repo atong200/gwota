@@ -1,5 +1,6 @@
 using System.Globalization;
 using Godot;
+using Gwota.Core.Data;
 
 namespace Gwota.Game.Ui;
 
@@ -10,7 +11,7 @@ namespace Gwota.Game.Ui;
 public sealed partial class OpponentHandView : Control
 {
     private const float HoverScale = 1.8f;
-    private static readonly Vector2 BackSize = new(20, 28);
+    private static readonly Vector2 BackSize = CardView.OfHeight(28);
 
     private readonly HBoxContainer _strip = new() { MouseFilter = MouseFilterEnum.Ignore };
     private readonly Label _label = Widgets.Label(string.Empty, 14, Palette.Muted).Outlined();
@@ -19,7 +20,7 @@ public sealed partial class OpponentHandView : Control
     {
         CustomMinimumSize = new Vector2(0, BackSize.Y);
         MouseFilter = MouseFilterEnum.Stop;
-        _strip.AddThemeConstantOverride("separation", 2);
+        _strip.WithGap(2);
         _label.VerticalAlignment = VerticalAlignment.Center;
         _strip.AddChild(_label);
         AddChild(_strip);
@@ -30,6 +31,9 @@ public sealed partial class OpponentHandView : Control
     }
 
     public int Count { get; private set; }
+
+    /// <summary>The opponent's deck back; applied on the next <see cref="Show"/>.</summary>
+    public CardBackStyle BackStyle { get; set; }
 
     public void Show(string ownerName, int count)
     {
@@ -44,7 +48,7 @@ public sealed partial class OpponentHandView : Control
         _strip.ClearChildren();
         for (var i = 0; i < count; i++)
         {
-            _strip.AddChild(new CardBack(BackSize));
+            _strip.AddChild(new CardBack(BackSize, BackStyle));
         }
 
         _strip.AddChild(_label);

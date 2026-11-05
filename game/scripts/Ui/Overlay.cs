@@ -7,7 +7,7 @@ namespace Gwota.Game.Ui;
 public sealed partial class Overlay : Control
 {
     /// <summary>Larger faces for the draft phase, where the hand is the only thing to look at.</summary>
-    public static readonly Vector2 DraftCardSize = new(124, 176);
+    public static readonly Vector2 DraftCardSize = CardView.OfHeight(176);
 
     private const int CardSeparation = 6;
     private const int MaxCardsPerLine = 10;
@@ -40,10 +40,9 @@ public sealed partial class Overlay : Control
         _cards.AddThemeConstantOverride("h_separation", CardSeparation);
         _cards.AddThemeConstantOverride("v_separation", CardSeparation);
         _buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        _buttons.AddThemeConstantOverride("separation", 16);
+        _buttons.WithGap(16);
 
-        var layout = new VBoxContainer();
-        layout.AddThemeConstantOverride("separation", 14);
+        var layout = new VBoxContainer().WithGap(14);
         layout.AddChild(_title);
         layout.AddChild(_message);
         layout.AddChild(_cards);
@@ -109,15 +108,23 @@ public sealed partial class Overlay : Control
         Visible = true;
     }
 
-    /// <summary>Replaces the buttons only (e.g. a label that follows the selection) without rebuilding the cards.</summary>
+    /// <summary>Replaces the buttons only, without rebuilding the cards. Navigation buttons use the body font.</summary>
     public void SetButtons(params (string Text, Action OnPressed)[] buttons)
     {
         ArgumentNullException.ThrowIfNull(buttons);
+        ReplaceButtons(buttons.Select(b => Widgets.Button(b.Text, b.OnPressed)).ToArray());
+    }
 
+    /// <summary>Replaces the buttons with a single in-game action (e.g. the draft confirm), in the display font.</summary>
+    public void SetGameButton(string text, Action onPressed) =>
+        ReplaceButtons(Widgets.Button(text, onPressed).AsDisplay(20));
+
+    private void ReplaceButtons(params Button[] buttons)
+    {
         _buttons.ClearChildren();
-        foreach (var (text, onPressed) in buttons)
+        foreach (var button in buttons)
         {
-            _buttons.AddChild(Widgets.Button(text, onPressed).AsDisplay(20));
+            _buttons.AddChild(button);
         }
 
         _buttons.Visible = buttons.Length > 0;

@@ -1,5 +1,7 @@
 using Godot;
 using Gwota.Core.Cards;
+using Gwota.Core.Common;
+using Gwota.Core.Data;
 
 namespace Gwota.Game.Ui;
 
@@ -39,6 +41,9 @@ public sealed partial class CardFlights : Control
         SetAnchorsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Ignore;
     }
+
+    /// <summary>The card back of each seat's deck, for face-down ends; the default back when unset.</summary>
+    public Func<Seat, CardBackStyle> CardBackOf { get; set; } = _ => new CardBackStyle(CardBacks.DefaultId, Faction.Neutral);
 
     /// <summary>1 for normal speed, 0.5 for fast; 0 means flights should be skipped by the caller.</summary>
     public float DurationScale { get; set; } = 1f;
@@ -180,7 +185,7 @@ public sealed partial class CardFlights : Control
     private Control CreateGhost(CardFlight flight, Vector2 size)
     {
         var ghost = new Control { Size = size, MouseFilter = MouseFilterEnum.Ignore, Modulate = new Color(1, 1, 1, 0) };
-        var back = new CardBack(size) { Name = "Back", PivotOffset = size / 2 };
+        var back = new CardBack(size, CardBackOf(flight.Card.Owner)) { Name = "Back", PivotOffset = size / 2 };
         var face = new CardView(flight.Card, size, flight.Strength)
         {
             Name = "Face",

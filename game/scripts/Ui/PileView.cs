@@ -1,5 +1,6 @@
 using Godot;
 using Gwota.Core.Cards;
+using Gwota.Core.Data;
 using Gwota.Core.Presentation;
 
 namespace Gwota.Game.Ui;
@@ -12,7 +13,8 @@ public enum PileKind
 
 /// <summary>
 /// A draw pile (up to three stacked card backs) or a discard pile (a bordered slot, then the top card face).
-/// The exact count shows over the pile while it is hovered, since a stack cannot be counted by eye.
+/// The exact count shows over the pile while it is hovered, since a stack cannot be counted by eye. A target outline
+/// (<see cref="SetHighlight"/>) marks a pile the selected play acts on.
 /// </summary>
 public sealed partial class PileView : Control
 {
@@ -23,6 +25,7 @@ public sealed partial class PileView : Control
     private readonly Vector2 _cardSize;
     private readonly Control _cards = new() { MouseFilter = MouseFilterEnum.Ignore };
     private readonly Label _countLabel;
+    private readonly Panel _highlight;
 
     public PileView(PileKind kind, Vector2 cardSize)
     {
@@ -30,7 +33,19 @@ public sealed partial class PileView : Control
         _cardSize = cardSize;
         CustomMinimumSize = cardSize + (new Vector2(StackOffset, StackOffset) * (MaxStacked - 1));
         MouseFilter = MouseFilterEnum.Stop;
+        if (kind == PileKind.Discard)
+        {
+            MouseDefaultCursorShape = CursorShape.PointingHand;
+        }
+
         AddChild(_cards);
+
+        _highlight = new Panel { MouseFilter = MouseFilterEnum.Ignore, Visible = false, Size = cardSize };
+        var outline = Widgets.Box(new Color(0, 0, 0, 0), Palette.Target, 3, radius: 6, margin: 0);
+        outline.ShadowColor = new Color(Palette.Target, 0.5f);
+        outline.ShadowSize = 6;
+        _highlight.AddThemeStyleboxOverride("panel", outline);
+        AddChild(_highlight);
 
         _countLabel = Widgets.Label(string.Empty, 14, Palette.Text, HorizontalAlignment.Center).Outlined();
         _countLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -46,7 +61,13 @@ public sealed partial class PileView : Control
         MouseExited += () => center.Visible = false;
     }
 
+    /// <summary>Raised on a left click on the pile.</summary>
+    public event Action? Clicked;
+
     public int Count { get; private set; }
+
+    /// <summary>The card back the draw pile shows (its owner's deck back); applied on the next <see cref="Show"/>.</summary>
+    public CardBackStyle BackStyle { get; set; }
 
     /// <summary>Global position of the top card (where drawn cards come from); the stack grows down-right under it.</summary>
     public Vector2 TopGlobalPosition => GlobalPosition;
@@ -69,11 +90,22 @@ public sealed partial class PileView : Control
             var stacked = Math.Min(count, MaxStacked);
             for (var i = 0; i < stacked; i++)
             {
-                _cards.AddChild(new CardBack(_cardSize) { Position = new Vector2(StackOffset, StackOffset) * (stacked - 1 - i) });
+                _cards.AddChild(new CardBack(_cardSize, BackStyle) { Position = new Vector2(StackOffset, StackOffset) * (stacked - 1 - i) });
             }
         }
 
         _countLabel.Text = CardText.PileCount(count, _kind == PileKind.Draw ? "draw pile" : "discard pile");
+    }
+
+    public void SetHighlight(bool highlighted) => _highlight.Visible = highlighted;
+
+    public override void _GuiInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && Clicked is not null)
+        {
+            Clicked();
+            AcceptEvent();
+        }
     }
 
     private PanelContainer EmptySlot()
